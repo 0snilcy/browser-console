@@ -1,0 +1,80 @@
+{
+	"name": "browser-console",
+	"description": "BrowserConsol extension",
+	"version": "0.0.1",
+	"publisher": "vscode-samples",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.32.0"
+	},
+	"repository": {
+		"url": "git@github.com:avocato0/browser-console.git"
+	},
+	"categories": [
+		"Debuggers",
+		"Testing",
+		"Visualization",
+		"Other"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "browser-console.start",
+				"title": "BrowserConsol: Start"
+			},
+			{
+				"command": "browser-console.stop",
+				"title": "BrowserConsol: Stop"
+			},
+			{
+				"command": "browser-console.restart",
+				"title": "BrowserConsol: Restart"
+			}
+		],
+		"configuration": {
+			"title": "BrowserConsol configurations",
+			"properties": {
+				"browserConsole.port": {
+					"description": "Port of web-server",
+					"type": "number"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint . --ext .ts,.tsx",
+		"watch": "tsc -watch -p ./"
+	},
+	"devDependencies": {
+		"@types/node": "^12.12.0",
+		"@types/puppeteer-core": "^2.0.0",
+		"@types/sockjs-client": "^1.1.1",
+		"@types/vscode": "^1.32.0",
+		"@typescript-eslint/eslint-plugin": "^3.0.2",
+		"@typescript-eslint/parser": "^3.0.2",
+		"devtools-protocol": "^0.0.802093",
+		"eslint": "^7.1.0",
+		"nodemon": "2.0.4",
+		"typescript": "^3.9.4"
+	},
+	"dependencies": {
+		"puppeteer-core": "^5.2.1",
+		"source-map": "^0.8.0-beta.0"
+	},
+	"nodemonConfig": {
+		"env": {
+			"DEBUG": "null"
+		},
+		"ignore": [
+			".git",
+			"node_modules/**/node_modules",
+			"out/test.js"
+		]
+	}
+}
