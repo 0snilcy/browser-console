@@ -3,8 +3,6 @@ import puppeteer from 'puppeteer';
 export default {
 	appName: 'browserConsole',
 	appNameU: 'BrowserConsole',
-	logRegexp: /.*console\.log\((.+?)\);*$/gm,
-	reconnectTime: 3000,
 	decoratorColor: '#ccc',
 	languagesIdentifiers: ['javascript', 'javascriptreact', 'typescript', 'typescriptreact'],
 	request: {
@@ -35,4 +33,9 @@ export default {
 		'--disable-dev-shm-usage',
 		// '--remote-debugging-port=9222',
 	],
+	pathToChrme: {
+		win32: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+		darwin: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+		linux: '/usr/bin/google-chrome',
+	},
 };

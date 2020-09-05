@@ -3,17 +3,52 @@ import Client from './Client';
 import LogHandler from './LogHandler';
 import config from '../config';
 import logger from './Logger';
+import StatusBar from './StatusBar';
 
 export default class Extension {
-	private client: Client;
+	private client: Client | null;
 	private logHandler: LogHandler;
+	private statusBar: StatusBar;
+	Command: {
+		[key: string]: any;
+		Start: any;
+		Stop: any;
+		Restart: any;
+	};
 
-	constructor(context: vscode.ExtensionContext) {
+	constructor(context: vscode.ExtensionContext, statusBar: StatusBar) {
 		this.logHandler = new LogHandler(context);
+		this.statusBar = statusBar;
+
+		this.Command = {
+			Start: this.startExtension,
+			Stop: this.stopExtensin,
+			Restart: this.restartExtension,
+		};
 	}
 
 	private getMessage(text: string) {
 		return `${config.appNameU}: ${text}`;
+	}
+
+	private showInfo(message: string) {
+		window.showInformationMessage(this.getMessage(message));
+	}
+
+	private showWarn(message: string) {
+		window.showWarningMessage(this.getMessage(message));
+	}
+
+	private showError(err: string | Error) {
+		this.stopExtensin();
+		console.error(err);
+		logger.log(err);
+
+		if (err instanceof Error) {
+			return window.showErrorMessage(this.getMessage(err.message));
+		}
+
+		window.showErrorMessage(this.getMessage(err));
 	}
 
 	private async getWebpackConfig() {
@@ -49,6 +84,8 @@ export default class Extension {
 
 		return {
 			port: settings.get('port') as number | undefined,
+			debug: settings.get('debug') as boolean,
+			pathToChrome: settings.get('pathToChrome') as string | undefined,
 		};
 	}
 
@@ -59,59 +96,73 @@ export default class Extension {
 			this.client.on('update', this.logHandler.reset);
 			this.client.on('log', this.logHandler.add);
 
-			await this.client.init(port);
+			await this.client.init(port, this.getConfig().pathToChrome);
 
-			await window.showInformationMessage(
-				this.getMessage(`Virtual console has been connected to http://localhost:${port}!`)
-			);
+			this.showInfo(`Virtual console has been connected to http://localhost:${port}!`);
+			this.statusBar.inActive();
 		} catch (err) {
-			console.error(err);
-			await window.showErrorMessage(
-				this.getMessage(
-					`Virtual console has not been connected to http://localhost:${port}!`
-				)
-			);
+			this.showError(err);
 		}
 	}
 
-	public onStartExtension = async () => {
-		if (workspace.rootPath) {
-			const { port: configPort } = this.getConfig();
-			if (configPort) {
-				return this.initClient(configPort);
-			}
-
-			const webpackPort = await this.getWebpackConfig();
-			if (webpackPort) {
-				return this.initClient(webpackPort);
-			}
-
-			const inputPort = await window.showInputBox({
-				placeHolder: 'Port number',
-				prompt: this.getMessage('Enter the port number of the running web server'),
-				ignoreFocusOut: true,
-			});
-
-			if (inputPort) {
-				const portNumbr = parseInt(inputPort);
-
-				if (portNumbr) {
-					return this.initClient(portNumbr);
-				}
-			}
-
-			window.showErrorMessage('Port is not valid!');
+	public startExtension = async () => {
+		if (!workspace.rootPath) {
+			this.showError('Workspase is empty!');
 		}
 
-		throw Error('Workspase is empty!');
+		this.statusBar.inProgress();
+
+		const { port: configPort } = this.getConfig();
+		if (configPort) {
+			return this.initClient(configPort);
+		}
+
+		const webpackPort = await this.getWebpackConfig();
+		if (webpackPort) {
+			return this.initClient(webpackPort);
+		}
+
+		const inputPort = await window.showInputBox({
+			placeHolder: 'Port number',
+			prompt: this.getMessage('Enter the port number of the running web server'),
+			ignoreFocusOut: true,
+		});
+
+		if (inputPort) {
+			const portNumbr = parseInt(inputPort);
+
+			if (portNumbr) {
+				return this.initClient(portNumbr);
+			}
+		}
+
+		this.showError('Port is not valid!');
 	};
 
-	public onStopExtensin = async () => {
+	public stopExtensin = async () => {
+		if (!this.client) {
+			return;
+		}
+
 		await this.client.close();
 		this.logHandler.reset();
+		this.statusBar.inStopped();
+		this.client = null;
+	};
 
-		await window.showErrorMessage(
-			this.getMessage(`Virtual console has been disconnected!`)
-		);
+	public restartExtension = async () => {
+		this.statusBar.inProgress();
+		await this.stopExtensin();
+		await this.startExtension();
+	};
+
+	public showCommands = async () => {
+		const value = await vscode.window.showQuickPick(Object.keys(this.Command));
+
+		if (!value) {
+			return;
+		}
+
+		this.Command[value].call(this);
 	};
 }

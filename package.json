@@ -23,16 +23,24 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "browser-console.start",
-				"title": "BrowserConsol: Start"
+				"command": "browser-console.commands",
+				"title": "Commands",
+				"category": "BrowserConsol"
 			},
 			{
 				"command": "browser-console.stop",
-				"title": "BrowserConsol: Stop"
+				"title": "Stop",
+				"category": "BrowserConsol"
 			},
 			{
 				"command": "browser-console.restart",
-				"title": "BrowserConsol: Restart"
+				"title": "Restart",
+				"category": "BrowserConsol"
+			},
+			{
+				"command": "browser-console.start",
+				"title": "Start",
+				"category": "BrowserConsol"
 			}
 		],
 		"configuration": {
@@ -41,8 +49,25 @@
 				"browserConsole.port": {
 					"description": "Port of web-server",
 					"type": "number"
+				},
+				"browserConsole.debug": {
+					"description": "Is debug env",
+					"type": "boolean",
+					"default": false
+				},
+				"browserConsole.pathToChrome": {
+					"description": "Path to Google Chrome dir",
+					"type": "string"
 				}
 			}
+		},
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "browser-console.commands",
+					"when": "false"
+				}
+			]
 		}
 	},
 	"scripts": {

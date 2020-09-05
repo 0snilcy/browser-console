@@ -6,29 +6,28 @@ import StatusBar from './components/StatusBar';
 let ext: Extension | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
-	logger.init(context);
-	ext = new Extension(context);
 	const statusBar = new StatusBar();
 
-	setTimeout(async () => {
-		const value = await vscode.window.showQuickPick(['test', 'go']);
-		console.log(value);
-	}, 2000);
+	try {
+		logger.init(context);
+		ext = new Extension(context, statusBar);
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('browser-console.start', ext.onStartExtension),
-		vscode.commands.registerCommand('browser-console.stop', ext.onStopExtensin),
-		vscode.commands.registerCommand('browser-console.restart', async () => {
-			if (ext) {
-				await ext.onStopExtensin();
-				await ext.onStartExtension();
-			}
-		})
-	);
+		context.subscriptions.push(
+			statusBar.bar,
+			vscode.commands.registerCommand('browser-console.commands', ext.showCommands),
+			vscode.commands.registerCommand('browser-console.start', ext.Command.Start),
+			vscode.commands.registerCommand('browser-console.stop', ext.Command.Stop),
+			vscode.commands.registerCommand('browser-console.restart', ext.Command.Restart)
+		);
+	} catch (err) {
+		statusBar.inStopped();
+		console.error(err);
+		logger.log(err);
+	}
 }
 
 export async function deactivate() {
 	if (ext) {
-		await ext.onStopExtensin();
+		await ext.stopExtensin();
 	}
 }
