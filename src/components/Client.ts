@@ -124,17 +124,36 @@ class Client extends EventEmitter {
 		return request.continue();
 	};
 
-	private async getPropsByObjectId(objectId: string) {
-		return await this.CDPclient.send('Runtime.getProperties', {
-			objectId,
-			ownProperties: false,
-			accessorPropertiesOnly: true,
-			generatePreview: true,
-		} as Protocol.Runtime.GetPropertiesRequest);
-	}
+	private getPropsByObjectId = async (
+		objectId: Protocol.Runtime.RemoteObjectId,
+		isProperty = true
+	): Promise<Protocol.Runtime.GetPropertiesResponse | undefined> => {
+		if (objectId) {
+			return (await this.CDPclient.send('Runtime.getProperties', {
+				objectId,
+				ownProperties: isProperty,
+				accessorPropertiesOnly: !isProperty,
+				generatePreview: true,
+			} as Protocol.Runtime.GetPropertiesRequest)) as Protocol.Runtime.GetPropertiesResponse;
+		}
+
+		console.error('objectId is missing');
+	};
 
 	private onConsoleLog = async (event: Protocol.Runtime.ConsoleAPICalledEvent) => {
-		const log = new Log(event);
+		const log = new Log(event, this.getPropsByObjectId);
+		if (event.type !== 'info') {
+			console.log(event.args);
+
+			// console.log(log.preview);
+
+			// if (!event.args) return;
+
+			const resp = await this.getPropsByObjectId(event.args[0].objectId);
+
+			console.log(resp?.result);
+		}
+
 		if (log.existOnClient) {
 			this.emit('log', log);
 		}
@@ -158,5 +177,12 @@ class Client extends EventEmitter {
 		return data;
 	}
 }
+
+const test = async () => {
+	console.clear();
+	const client = new Client();
+	await client.init(8080);
+};
+test();
 
 export default Client;

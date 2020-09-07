@@ -121,7 +121,7 @@ export default class LogHandler {
 				return;
 			}
 
-			const decorator = this.getDecorator(log.preview);
+			const decorator = this.getDecorator(log.previewTitle);
 			const range = [this.getRange(log.originalPosition.line)];
 			(this.activeEditor as vscode.TextEditor).setDecorations(decorator, range);
 

@@ -7,22 +7,25 @@ export interface Position {
 	source: string;
 }
 
-type LogType = ConsoleEvent['type'];
-type ConsoleEvent = Protocol.Runtime.ConsoleAPICalledEvent;
-type ClientObject = Protocol.Runtime.RemoteObject;
-type PropertyPreview = Protocol.Runtime.PropertyPreview;
-type EntryPreview = Protocol.Runtime.EntryPreview;
-type ObjectPreview = Protocol.Runtime.ObjectPreview;
+export interface Preview {
+	title: string;
+	objectId?: Protocol.Runtime.RemoteObjectId;
+}
 
 export default class Log {
 	private sourceMaps = SourceMaps;
 
-	type: LogType;
-	args: ClientObject[];
+	type: Protocol.Runtime.ConsoleAPICalledEvent['type'];
+	args: Protocol.Runtime.RemoteObject[];
 	generatedPosition: Position;
 	originalPosition: Position;
 
-	constructor(logEvent: ConsoleEvent) {
+	constructor(
+		logEvent: Protocol.Runtime.ConsoleAPICalledEvent,
+		public getPropsByObjectId: (
+			objectId: Protocol.Runtime.RemoteObjectId
+		) => Promise<Protocol.Runtime.GetPropertiesResponse | undefined>
+	) {
 		const { type, args, stackTrace } = logEvent;
 
 		if (!stackTrace?.callFrames?.length) {
@@ -71,17 +74,17 @@ export default class Log {
 		return this.quoteString(typeof arg === 'string', arg);
 	}
 
-	private propToString(prop: PropertyPreview | undefined) {
+	private propToString(prop: Protocol.Runtime.PropertyPreview | undefined) {
 		if (prop) {
 			return this.quoteString(prop.type === 'string', prop.value);
 		}
 	}
 
-	private objectToString(obj: ObjectPreview) {
+	private objectToString(obj: Protocol.Runtime.ObjectPreview) {
 		return this.quoteString(obj.type === 'string', obj.description);
 	}
 
-	private entryToString(entry: EntryPreview | undefined) {
+	private entryToString(entry: Protocol.Runtime.EntryPreview | undefined) {
 		if (entry?.value) {
 			if (entry.key) {
 				return `${this.objectToString(entry.key)} => ${this.objectToString(entry.value)}`;
@@ -91,50 +94,60 @@ export default class Log {
 		}
 	}
 
-	get preview() {
+	getPreviewOfRemoteObject = (object: Protocol.Runtime.RemoteObject) => {
 		const ignoreClasses = ['Object', 'Function'];
+		const { type, value, subtype, preview, description, className } = object;
+		const props = preview?.properties as Protocol.Runtime.PropertyPreview[];
 
-		return this.args
-			.map((arg) => {
-				const { type, value, subtype, preview, description, className } = arg;
-				const props = preview?.properties as PropertyPreview[];
+		if (Object.hasOwnProperty.call(object, 'value')) {
+			return this.valueToString(value);
+		}
 
-				if (Object.hasOwnProperty.call(arg, 'value')) {
-					return this.valueToString(value);
+		const classDescription =
+			className && !ignoreClasses.includes(className) ? `${className}: ` : '';
+
+		switch (type) {
+			case 'object':
+				if (!subtype) {
+					return `${classDescription}{ ${preview?.properties
+						.map((prop) => `${prop.name}: ${this.propToString(prop)}`)
+						.join(', ')} }`;
 				}
 
-				const classDescription =
-					className && !ignoreClasses.includes(className) ? `${className}: ` : '';
+				switch (subtype) {
+					case 'array':
+						return `[ ${preview?.properties.map(this.propToString, this).join(', ')} ]`;
 
-				switch (type) {
-					case 'object':
-						if (!subtype) {
-							return `${classDescription}{ ${preview?.properties
-								.map((prop) => `${prop.name}: ${this.propToString(prop)}`)
-								.join(', ')} }`;
-						}
+					case 'promise':
+						return `${description}: { <${this.propToString(props[0])}>: ${this.propToString(
+							props[1]
+						)} }`;
 
-						switch (subtype) {
-							case 'array':
-								return `[ ${preview?.properties.map(this.propToString, this).join(', ')} ]`;
-
-							case 'promise':
-								return `${description}: { <${this.propToString(
-									props[0]
-								)}>: ${this.propToString(props[1])} }`;
-
-							case 'map':
-							case 'set':
-							case 'weakmap':
-							case 'weakset':
-								return `${description}: { ${preview?.entries
-									?.map(this.entryToString, this)
-									.join(', ')} }`;
-						}
+					case 'map':
+					case 'set':
+					case 'weakmap':
+					case 'weakset':
+						return `${description}: { ${preview?.entries
+							?.map(this.entryToString, this)
+							.join(', ')} }`;
 				}
+		}
 
-				return `${classDescription}${description}`;
-			})
-			.join(', ');
+		return `${classDescription}${description}`;
+	};
+
+	get preview() {
+		return this.args.map(this.getPreview);
 	}
+
+	get previewTitle() {
+		return this.preview.map((preview) => preview.title).join(', ');
+	}
+
+	getPreview = (remoteObject: Protocol.Runtime.RemoteObject): Preview => {
+		return {
+			title: this.getPreviewOfRemoteObject(remoteObject),
+			objectId: remoteObject.objectId,
+		} as Preview;
+	};
 }
