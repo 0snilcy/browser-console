@@ -25,26 +25,26 @@
 			{
 				"command": "browser-console.commands",
 				"title": "Commands",
-				"category": "BrowserConsol"
+				"category": "BrowserConsole"
 			},
 			{
 				"command": "browser-console.stop",
 				"title": "Stop",
-				"category": "BrowserConsol"
+				"category": "BrowserConsole"
 			},
 			{
 				"command": "browser-console.restart",
 				"title": "Restart",
-				"category": "BrowserConsol"
+				"category": "BrowserConsole"
 			},
 			{
 				"command": "browser-console.start",
 				"title": "Start",
-				"category": "BrowserConsol"
+				"category": "BrowserConsole"
 			}
 		],
 		"configuration": {
-			"title": "BrowserConsol configurations",
+			"title": "Browser Console",
 			"properties": {
 				"browserConsole.port": {
 					"description": "Port of web-server",
@@ -58,6 +58,11 @@
 				"browserConsole.pathToChrome": {
 					"description": "Path to Google Chrome dir",
 					"type": "string"
+				},
+				"browserConsole.textColor": {
+					"description": "Color of log's decorator\n https://code.visualstudio.com/api/references/theme-color#color-formats",
+					"type": "string",
+					"default": "#0006"
 				}
 			}
 		},
@@ -68,7 +73,32 @@
 					"when": "false"
 				}
 			]
-		}
+		},
+		"views": {
+			"browser-console-panel": [
+				{
+					"id": "browser-console-view",
+					"name": "Browser Console",
+					"icon": "assets/img/console.svg",
+					"contextualTitle": "Browser Console"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "browser-console-panel",
+					"title": "Browser Console",
+					"icon": "assets/img/console.svg"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "browser-console-view",
+				"contents": "No logs found."
+			}
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

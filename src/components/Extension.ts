@@ -4,11 +4,19 @@ import LogHandler from './LogHandler';
 import config from '../config';
 import logger from './Logger';
 import StatusBar from './StatusBar';
+import Sidebar from './Sidebar';
+import { Position } from './Log';
+
+export interface Settings {
+	port?: number;
+	debug?: boolean;
+	pathToChrome?: string;
+	textColor?: string;
+}
 
 export default class Extension {
 	private client: Client | null;
 	private logHandler: LogHandler;
-	private statusBar: StatusBar;
 	Command: {
 		[key: string]: any;
 		Start: any;
@@ -16,10 +24,11 @@ export default class Extension {
 		Restart: any;
 	};
 
-	constructor(context: vscode.ExtensionContext, statusBar: StatusBar) {
-		this.logHandler = new LogHandler(context);
-		this.statusBar = statusBar;
-
+	constructor(
+		private context: vscode.ExtensionContext,
+		private statusBar: StatusBar,
+		private sidebar: Sidebar
+	) {
 		this.Command = {
 			Start: this.startExtension,
 			Stop: this.stopExtensin,
@@ -79,24 +88,26 @@ export default class Extension {
 		}
 	}
 
-	private getConfig() {
+	private get settings() {
 		const settings = workspace.getConfiguration(config.appName);
 
 		return {
-			port: settings.get('port') as number | undefined,
-			debug: settings.get('debug') as boolean,
-			pathToChrome: settings.get('pathToChrome') as string | undefined,
-		};
+			port: settings.get('port'),
+			debug: settings.get('debug'),
+			pathToChrome: settings.get('pathToChrome'),
+			textColor: settings.get('textColor'),
+		} as Settings;
 	}
 
 	private async initClient(port: number | string) {
 		try {
+			this.logHandler = new LogHandler(this.context, this.sidebar, this.settings);
 			this.client = new Client();
 
 			this.client.on('update', this.logHandler.reset);
 			this.client.on('log', this.logHandler.add);
 
-			await this.client.init(port, this.getConfig().pathToChrome);
+			await this.client.init(port, this.settings.pathToChrome);
 
 			this.showInfo(`Virtual console has been connected to http://localhost:${port}!`);
 			this.statusBar.inActive();
@@ -112,7 +123,7 @@ export default class Extension {
 
 		this.statusBar.inProgress();
 
-		const { port: configPort } = this.getConfig();
+		const { port: configPort } = this.settings;
 		if (configPort) {
 			return this.initClient(configPort);
 		}
@@ -164,5 +175,25 @@ export default class Extension {
 		}
 
 		this.Command[value].call(this);
+	};
+
+	public showLine = async (position: Position) => {
+		const rootpath = vscode.Uri.file(workspace.rootPath as string);
+		const filePath = vscode.Uri.joinPath(rootpath, position.source);
+		const line = position.line - 1;
+		const codePosition = new vscode.Position(line, 0);
+
+		const visibleEditor = window.visibleTextEditors.find((editor) => {
+			return filePath.path === editor.document.uri.path;
+		});
+
+		if (visibleEditor) {
+			visibleEditor.selection = new vscode.Selection(codePosition, codePosition);
+			visibleEditor.revealRange(new vscode.Range(codePosition, codePosition));
+		} else {
+			window.showTextDocument(filePath, {
+				selection: new vscode.Range(codePosition, codePosition),
+			});
+		}
 	};
 }

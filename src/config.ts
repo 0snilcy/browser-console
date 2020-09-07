@@ -1,9 +1,14 @@
-import puppeteer from 'puppeteer';
+const pathToChrome: {
+	[key in NodeJS.Platform]?: string;
+} = {
+	win32: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+	darwin: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+	linux: '/usr/bin/google-chrome',
+};
 
 export default {
 	appName: 'browserConsole',
 	appNameU: 'BrowserConsole',
-	decoratorColor: '#ccc',
 	languagesIdentifiers: ['javascript', 'javascriptreact', 'typescript', 'typescriptreact'],
 	request: {
 		ignoreTypes: ['image', 'font', 'stylesheet'],
@@ -33,9 +38,5 @@ export default {
 		'--disable-dev-shm-usage',
 		// '--remote-debugging-port=9222',
 	],
-	pathToChrme: {
-		win32: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-		darwin: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-		linux: '/usr/bin/google-chrome',
-	},
+	pathToChrome,
 };

@@ -1,21 +1,25 @@
 import vscode, { workspace, window } from 'vscode';
-
 import config from '../config';
-import Log, { Position } from './Log';
-import { link } from 'fs';
+
+import Log from './Log';
+import Sidebar from './Sidebar';
+import { Settings } from './Extension';
 
 export interface DecoratorContainer {
 	path: string;
 	decorator: vscode.TextEditorDecorationType;
 }
-
 export default class LogHandler {
 	private logs: Log[] = [];
 	private decorators: DecoratorContainer[] = [];
-	private rootPathCache: vscode.Uri | undefined;
-	private activeEditor: vscode.TextEditor | undefined = window.activeTextEditor;
+	private rootPathCache?: vscode.Uri;
+	private activeEditor?: vscode.TextEditor = window.activeTextEditor;
 
-	constructor(context: vscode.ExtensionContext) {
+	constructor(
+		private context: vscode.ExtensionContext,
+		private sidebar: Sidebar,
+		private settings: Settings
+	) {
 		workspace.onDidChangeTextDocument(
 			(editor) => {
 				if (this.decorators.length && editor.document.isDirty) {
@@ -58,8 +62,12 @@ export default class LogHandler {
 	private getDecorator(contentText: string) {
 		return window.createTextEditorDecorationType({
 			isWholeLine: true,
-			border: '1px solid red',
-			after: { margin: '0 0 0 1rem', contentText, color: 'red' },
+			after: {
+				margin: '0 0 0 1rem',
+				contentText,
+				color: this.settings.debug ? 'red' : this.settings.textColor,
+			},
+			border: this.settings.debug ? '1px solid red' : 'none',
 		});
 	}
 
@@ -75,6 +83,7 @@ export default class LogHandler {
 	add = (log: Log) => {
 		this.logs.push(log);
 		this.showLogsInText([log]);
+		this.sidebar.add(log);
 	};
 
 	reset = () => {
@@ -82,6 +91,7 @@ export default class LogHandler {
 			decorator.dispose();
 		});
 		this.logs = [];
+		this.sidebar.reset();
 	};
 
 	resetFile = (path: string) => {

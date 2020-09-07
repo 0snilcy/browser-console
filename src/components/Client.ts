@@ -6,7 +6,6 @@ import os from 'os';
 import SourceMaps from './SourceMaps';
 import config from '../config';
 import Log from './Log';
-import { ClientErorr } from './Errors';
 
 export interface ClientEvent {
 	log: Log;
@@ -39,16 +38,11 @@ class Client extends EventEmitter {
 	}
 
 	private get defaultBrowserDir() {
-		const platform = os.platform() as string;
-		const configPaths = config.pathToChrme as {
-			[key: string]: string;
-		};
-		if (Object.hasOwnProperty.call(configPaths, platform)) {
-			return configPaths[platform];
-		}
+		const platform = os.platform();
+		return config.pathToChrome[platform];
 	}
 
-	public async init(port: number | string, browserDir: string | undefined) {
+	public async init(port: number | string, browserDir?: string) {
 		this.browser = await puppeteer.launch({
 			// headless: false,
 			// devtools: true,
