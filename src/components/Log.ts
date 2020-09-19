@@ -1,13 +1,14 @@
 import { Protocol } from 'devtools-protocol';
 import SourceMaps from './SourceMaps';
+import { URL } from 'url';
 
-export interface Position {
+export interface IPosition {
 	line: number;
 	column: number;
 	source: string;
 }
 
-export interface Preview {
+export interface IPreview {
 	title: string;
 	objectId?: Protocol.Runtime.RemoteObjectId;
 }
@@ -17,8 +18,8 @@ export default class Log {
 
 	type: Protocol.Runtime.ConsoleAPICalledEvent['type'];
 	args: Protocol.Runtime.RemoteObject[];
-	generatedPosition: Position;
-	originalPosition: Position;
+	generatedPosition: IPosition;
+	originalPosition: IPosition;
 
 	constructor(
 		logEvent: Protocol.Runtime.ConsoleAPICalledEvent,
@@ -144,10 +145,10 @@ export default class Log {
 		return this.preview.map((preview) => preview.title).join(', ');
 	}
 
-	getPreview = (remoteObject: Protocol.Runtime.RemoteObject): Preview => {
+	getPreview = (remoteObject: Protocol.Runtime.RemoteObject): IPreview => {
 		return {
 			title: this.getPreviewOfRemoteObject(remoteObject),
 			objectId: remoteObject.objectId,
-		} as Preview;
+		} as IPreview;
 	};
 }

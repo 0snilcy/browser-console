@@ -80,7 +80,8 @@
 					"id": "browser-console-view",
 					"name": "Browser Console",
 					"icon": "assets/img/console.svg",
-					"contextualTitle": "Browser Console"
+					"contextualTitle": "Browser Console",
+					"when": "browserIsStarting"
 				}
 			]
 		},

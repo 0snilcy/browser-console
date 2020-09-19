@@ -7,33 +7,33 @@ import SourceMaps from './SourceMaps';
 import config from '../config';
 import Log from './Log';
 
-export interface ClientEvent {
+export interface IBrowserEvent {
 	log: Log;
 	update: boolean;
 }
 
-export interface FileLoaderResponse {
+export interface IFileLoaderResponse {
 	status: number;
 	statusText: string;
 	ok: boolean;
 	content?: string;
 }
 
-class Client extends EventEmitter {
+class Browser extends EventEmitter {
 	private browser: puppeteer.Browser;
 	private page: puppeteer.Page;
 	private CDPclient: puppeteer.CDPSession;
 	private serverHash: string;
 	private sourceMaps = SourceMaps;
 
-	public on<K extends keyof ClientEvent>(
+	public on<K extends keyof IBrowserEvent>(
 		type: K,
-		listener: (arg: ClientEvent[K]) => void
+		listener: (arg: IBrowserEvent[K]) => void
 	): this {
 		return super.on(type, listener);
 	}
 
-	public emit<K extends keyof ClientEvent>(type: K, arg: ClientEvent[K]): boolean {
+	public emit<K extends keyof IBrowserEvent>(type: K, arg: IBrowserEvent[K]): boolean {
 		return super.emit(type, arg);
 	}
 
@@ -143,15 +143,11 @@ class Client extends EventEmitter {
 	private onConsoleLog = async (event: Protocol.Runtime.ConsoleAPICalledEvent) => {
 		const log = new Log(event, this.getPropsByObjectId);
 		if (event.type !== 'info') {
-			console.log(event.args);
-
+			// console.log(event.args);
 			// console.log(log.preview);
-
 			// if (!event.args) return;
-
-			const resp = await this.getPropsByObjectId(event.args[0].objectId);
-
-			console.log(resp?.result);
+			// const resp = await this.getPropsByObjectId(event.args[0].objectId);
+			// console.log(resp?.result);
 		}
 
 		if (log.existOnClient) {
@@ -159,14 +155,14 @@ class Client extends EventEmitter {
 		}
 	};
 
-	private async loadFile(url: string): Promise<FileLoaderResponse | undefined> {
+	private async loadFile(url: string): Promise<IFileLoaderResponse | undefined> {
 		const page = await this.browser.newPage();
 		const response = await page.goto(url);
 		if (!response) {
 			return;
 		}
 
-		const data: FileLoaderResponse = {
+		const data: IFileLoaderResponse = {
 			status: response.status(),
 			statusText: response.statusText(),
 			ok: response.ok(),
@@ -180,9 +176,9 @@ class Client extends EventEmitter {
 
 const test = async () => {
 	console.clear();
-	const client = new Client();
-	await client.init(8080);
+	const browser = new Browser();
+	await browser.init(8080);
 };
-test();
+// test();
 
-export default Client;
+export default Browser;

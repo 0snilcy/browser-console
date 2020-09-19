@@ -1,52 +1,59 @@
 import vscode from 'vscode';
-import Log, { Preview } from './Log';
-import logger from './Logger';
+import Log, { IPreview } from '../Log';
+import logger from '../Logger';
 import path from 'path';
-interface PathLog {
-	[key: string]: PathLog | Log[];
+
+interface IPathLog {
+	[key: string]: IPathLog | Log[];
 }
 
 type MaybeLog = vscode.TreeItem | undefined;
 
-export default class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
+class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<MaybeLog> = new vscode.EventEmitter<
 		MaybeLog
 	>();
 	readonly onDidChangeTreeData: vscode.Event<MaybeLog> = this._onDidChangeTreeData.event;
-	private sortedLogs: PathLog = {};
-
-	constructor(private workspaceRoot?: string) {}
+	private sortedLogs: IPathLog = {};
 
 	getTreeItem(element: LogTreeItem): vscode.TreeItem {
+		console.log('getTreeItem');
+
 		return element;
 	}
 
 	async getChildren(parentElement: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
+		console.log('getChildren', parentElement?.label);
 		if (parentElement) {
 			if (parentElement instanceof ArgTreeItem || parentElement instanceof PropTreeItem) {
 				const id = parentElement.preview.objectId;
 				if (id) {
-					const response = await parentElement.log.getPropsByObjectId(id);
-					if (response) {
-						const { result } = response;
-						return Promise.resolve(
-							result.map((propertyDescriptor) => {
-								const { value, name, enumerable } = propertyDescriptor;
-								if (value && name) {
-									const preview = parentElement.log.getPreview(value);
-									return new PropTreeItem(
-										parentElement.log,
-										name,
-										preview,
-										preview.objectId
-											? enumerable
-												? vscode.TreeItemCollapsibleState.Expanded
-												: vscode.TreeItemCollapsibleState.Collapsed
-											: vscode.TreeItemCollapsibleState.None
-									);
-								}
-							}) as PropTreeItem[]
-						);
+					try {
+						const response = await parentElement.log.getPropsByObjectId(id);
+
+						if (response) {
+							const { result } = response;
+							return Promise.resolve(
+								result.map((propertyDescriptor) => {
+									const { value, name, enumerable } = propertyDescriptor;
+									if (value && name) {
+										const preview = parentElement.log.getPreview(value);
+										return new PropTreeItem(
+											parentElement.log,
+											name,
+											preview,
+											preview.objectId
+												? enumerable
+													? vscode.TreeItemCollapsibleState.Expanded
+													: vscode.TreeItemCollapsibleState.Collapsed
+												: vscode.TreeItemCollapsibleState.None
+										);
+									}
+								}) as PropTreeItem[]
+							);
+						}
+					} catch (err) {
+						console.error(err);
 					}
 				}
 
@@ -110,33 +117,45 @@ export default class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem>
 		}
 	}
 
-	add(log: Log) {
+	add = (log: Log) => {
 		const pathArr = log.originalPosition.source.split('/').filter((el) => el);
-		pathArr.reduce((obj: PathLog, path, id, arr) => {
+
+		pathArr.reduce((obj, path, id, arr) => {
 			const existLogs = obj[path];
+			const isLast = !arr[id + 1];
+
 			if (existLogs) {
 				if (Array.isArray(existLogs)) {
 					existLogs.push(log);
+					return obj;
 				}
 
 				return existLogs;
 			}
 
-			obj[path] = arr[id + 1] ? {} : [log];
-			return obj[path];
+			if (!isLast) {
+				const nextPathObj = {};
+				obj[path] = nextPathObj;
+				return nextPathObj;
+			}
+
+			obj[path] = [log];
+			return obj;
 		}, this.sortedLogs);
 
 		this.refresh();
-	}
+	};
 
-	reset() {
+	reset = () => {
+		console.log('sidebar reset');
 		this.sortedLogs = {};
 		this.refresh();
-	}
+	};
 
-	refresh() {
+	refresh = () => {
+		console.log('sidebar refresh');
 		this._onDidChangeTreeData.fire(undefined);
-	}
+	};
 }
 
 class PathTreeItem extends vscode.TreeItem {
@@ -164,7 +183,7 @@ class LogTreeItem extends vscode.TreeItem {
 class ArgTreeItem extends vscode.TreeItem {
 	constructor(
 		public readonly log: Log,
-		public readonly preview: Preview,
+		public readonly preview: IPreview,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode
 			.TreeItemCollapsibleState.None,
 		public readonly command?: vscode.Command
@@ -172,13 +191,17 @@ class ArgTreeItem extends vscode.TreeItem {
 		super(preview.title, collapsibleState);
 		this.iconPath = path.resolve(__dirname, `../../assets/img/log-icons/${log.type}.svg`);
 	}
+
+	get tooltip() {
+		return `${this.log.originalPosition.source}:${this.log.originalPosition.line}`;
+	}
 }
 
 class PropTreeItem extends vscode.TreeItem {
 	constructor(
 		public readonly log: Log,
 		public readonly key: string,
-		public readonly preview: Preview,
+		public readonly preview: IPreview,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode
 			.TreeItemCollapsibleState.None,
 		public readonly command?: vscode.Command
@@ -192,3 +215,5 @@ class PropTreeItem extends vscode.TreeItem {
 		return this.preview.title;
 	}
 }
+
+export default Sidebar;

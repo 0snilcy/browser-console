@@ -1,40 +1,32 @@
-import vscode, { workspace, window } from 'vscode';
-import Client from './Client';
-import LogHandler from './LogHandler';
+import vscode, { workspace, window, Command } from 'vscode';
+import Browser from './Browser';
+import LogController from './LogContrller';
 import config from '../config';
 import logger from './Logger';
-import StatusBar from './StatusBar';
-import Sidebar from './Sidebar';
-import { Position } from './Log';
+import StatusBar from './ui/StatusBar';
+import { IPosition } from './Log';
+import { URL } from 'url';
 
-export interface Settings {
+export interface ISettings {
 	port?: number;
 	debug?: boolean;
 	pathToChrome?: string;
 	textColor?: string;
 }
 
-export default class Extension {
-	private client: Client | null;
-	private logHandler: LogHandler;
-	Command: {
-		[key: string]: any;
-		Start: any;
-		Stop: any;
-		Restart: any;
-	};
+type AsyncFn = () => Promise<void>;
 
-	constructor(
-		private context: vscode.ExtensionContext,
-		private statusBar: StatusBar,
-		private sidebar: Sidebar
-	) {
-		this.Command = {
-			Start: this.startExtension,
-			Stop: this.stopExtensin,
-			Restart: this.restartExtension,
-		};
-	}
+interface ICommand {
+	Start: AsyncFn;
+	Stop: AsyncFn;
+	Restart: AsyncFn;
+}
+
+export default class Extension {
+	private browser: Browser | null;
+	private logController: LogController;
+
+	constructor(private context: vscode.ExtensionContext, private statusBar: StatusBar) {}
 
 	private getMessage(text: string) {
 		return `${config.appNameU}: ${text}`;
@@ -49,7 +41,7 @@ export default class Extension {
 	}
 
 	private showError(err: string | Error) {
-		this.stopExtensin();
+		// this.stopExtensin();
 		console.error(err);
 		logger.log(err);
 
@@ -85,6 +77,7 @@ export default class Extension {
 			}
 		} catch (err) {
 			console.error(err);
+			logger.log(err);
 		}
 	}
 
@@ -96,21 +89,22 @@ export default class Extension {
 			debug: settings.get('debug'),
 			pathToChrome: settings.get('pathToChrome'),
 			textColor: settings.get('textColor'),
-		} as Settings;
+		} as ISettings;
 	}
 
-	private async initClient(port: number | string) {
+	private async initBrowser(port: number | string) {
 		try {
-			this.logHandler = new LogHandler(this.context, this.sidebar, this.settings);
-			this.client = new Client();
+			this.logController = new LogController(this.settings, this.context);
+			this.browser = new Browser();
 
-			this.client.on('update', this.logHandler.reset);
-			this.client.on('log', this.logHandler.add);
+			this.browser.on('update', this.logController.reset);
+			this.browser.on('log', this.logController.add);
 
-			await this.client.init(port, this.settings.pathToChrome);
+			await this.browser.init(port, this.settings.pathToChrome);
 
 			this.showInfo(`Virtual console has been connected to http://localhost:${port}!`);
 			this.statusBar.inActive();
+			vscode.commands.executeCommand('setContext', 'browserIsStarting', true);
 		} catch (err) {
 			this.showError(err);
 		}
@@ -125,12 +119,12 @@ export default class Extension {
 
 		const { port: configPort } = this.settings;
 		if (configPort) {
-			return this.initClient(configPort);
+			return this.initBrowser(configPort);
 		}
 
 		const webpackPort = await this.getWebpackConfig();
 		if (webpackPort) {
-			return this.initClient(webpackPort);
+			return this.initBrowser(webpackPort);
 		}
 
 		const inputPort = await window.showInputBox({
@@ -143,7 +137,7 @@ export default class Extension {
 			const portNumbr = parseInt(inputPort);
 
 			if (portNumbr) {
-				return this.initClient(portNumbr);
+				return this.initBrowser(portNumbr);
 			}
 		}
 
@@ -151,14 +145,16 @@ export default class Extension {
 	};
 
 	public stopExtensin = async () => {
-		if (!this.client) {
+		if (!this.browser) {
 			return;
 		}
 
-		await this.client.close();
-		this.logHandler.reset();
+		await this.browser.close();
+		this.logController.reset();
+		this.logController.removeListeners();
 		this.statusBar.inStopped();
-		this.client = null;
+		vscode.commands.executeCommand('setContext', 'browserIsStarting', false);
+		this.browser = null;
 	};
 
 	public restartExtension = async () => {
@@ -168,16 +164,22 @@ export default class Extension {
 	};
 
 	public showCommands = async () => {
-		const value = await vscode.window.showQuickPick(Object.keys(this.Command));
+		const Command: ICommand = {
+			Start: this.startExtension,
+			Stop: this.stopExtensin,
+			Restart: this.restartExtension,
+		};
 
-		if (!value) {
-			return;
+		const value = (await vscode.window.showQuickPick(Object.keys(Command))) as
+			| keyof ICommand
+			| undefined;
+
+		if (value) {
+			Command[value].call(this);
 		}
-
-		this.Command[value].call(this);
 	};
 
-	public showLine = async (position: Position) => {
+	public showLine = async (position: IPosition) => {
 		const rootpath = vscode.Uri.file(workspace.rootPath as string);
 		const filePath = vscode.Uri.joinPath(rootpath, position.source);
 		const line = position.line - 1;
