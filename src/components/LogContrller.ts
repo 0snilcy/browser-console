@@ -2,7 +2,7 @@ import vscode, { workspace, window } from 'vscode';
 
 import Log from './Log';
 import { ISettings } from './Extension';
-import Sidebar from './ui/Sidebar';
+import Sidebar from './ui/Sidebar/';
 import Decorator from './ui/Decorator';
 import { getPathOfRoot } from '../utils';
 

@@ -152,6 +152,13 @@ class Browser extends EventEmitter {
 
 		if (log.existOnClient) {
 			this.emit('log', log);
+
+			console.log(log.args[0]);
+			const resp = await log.getProps(log.preview[0]);
+			// console.log(resp);
+
+			// if (!value) return;
+			// console.log(log.getPreview(value));
 		}
 	};
 
@@ -176,9 +183,10 @@ class Browser extends EventEmitter {
 
 const test = async () => {
 	console.clear();
+
 	const browser = new Browser();
 	await browser.init(8080);
 };
-// test();
+test();
 
 export default Browser;

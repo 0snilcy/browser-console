@@ -11,6 +11,13 @@ export interface IPosition {
 export interface IPreview {
 	title: string;
 	objectId?: Protocol.Runtime.RemoteObjectId;
+	isNode: boolean;
+}
+
+interface IGetPropsResponse {
+	preview: IPreview;
+	name: string;
+	enumerable: boolean;
 }
 
 export default class Log {
@@ -23,8 +30,9 @@ export default class Log {
 
 	constructor(
 		logEvent: Protocol.Runtime.ConsoleAPICalledEvent,
-		public getPropsByObjectId: (
-			objectId: Protocol.Runtime.RemoteObjectId
+		private getPropsByObjectId: (
+			objectId: Protocol.Runtime.RemoteObjectId,
+			isProperty?: boolean
 		) => Promise<Protocol.Runtime.GetPropertiesResponse | undefined>
 	) {
 		const { type, args, stackTrace } = logEvent;
@@ -55,6 +63,26 @@ export default class Log {
 			column: sourceMapPosition.column as number,
 			source: sourceMapPosition.source ? this.getPathFromURL(sourceMapPosition.source) : '',
 		};
+	}
+
+	async getProps(object: IPreview): Promise<IGetPropsResponse[] | undefined> {
+		if (object.objectId) {
+			const response = await this.getPropsByObjectId(object.objectId);
+
+			if (response) {
+				const { result } = response;
+				return result
+					.filter(({ value }) => value)
+					.map((propertyDescriptor) => {
+						const { value, name, enumerable } = propertyDescriptor;
+						return {
+							preview: this.getPreview(value as Protocol.Runtime.RemoteObject),
+							name,
+							enumerable,
+						};
+					});
+			}
+		}
 	}
 
 	private getPathFromURL(url: string) {
@@ -110,27 +138,27 @@ export default class Log {
 		switch (type) {
 			case 'object':
 				if (!subtype) {
-					return `${classDescription}{ ${preview?.properties
+					return `${classDescription}{${preview?.properties
 						.map((prop) => `${prop.name}: ${this.propToString(prop)}`)
-						.join(', ')} }`;
+						.join(', ')}}`;
 				}
 
 				switch (subtype) {
 					case 'array':
-						return `[ ${preview?.properties.map(this.propToString, this).join(', ')} ]`;
+						return `[${preview?.properties.map(this.propToString, this).join(', ')}]`;
 
 					case 'promise':
-						return `${description}: { <${this.propToString(props[0])}>: ${this.propToString(
+						return `${description}: {<${this.propToString(props[0])}>: ${this.propToString(
 							props[1]
-						)} }`;
+						)}}`;
 
 					case 'map':
 					case 'set':
 					case 'weakmap':
 					case 'weakset':
-						return `${description}: { ${preview?.entries
+						return `${description}: {${preview?.entries
 							?.map(this.entryToString, this)
-							.join(', ')} }`;
+							.join(', ')}}`;
 				}
 		}
 
@@ -149,6 +177,7 @@ export default class Log {
 		return {
 			title: this.getPreviewOfRemoteObject(remoteObject),
 			objectId: remoteObject.objectId,
+			isNode: remoteObject.subtype === 'node',
 		} as IPreview;
 	};
 }

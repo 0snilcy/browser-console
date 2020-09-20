@@ -81,7 +81,7 @@
 					"name": "Browser Console",
 					"icon": "assets/img/console.svg",
 					"contextualTitle": "Browser Console",
-					"when": "browserIsStarting"
+					"when": "browserIsStarting || config.browserConsole.debug"
 				}
 			]
 		},
