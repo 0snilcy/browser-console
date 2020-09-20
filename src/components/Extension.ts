@@ -6,13 +6,7 @@ import logger from './Logger';
 import StatusBar from './ui/StatusBar';
 import { IPosition } from './Log';
 import { URL } from 'url';
-
-export interface ISettings {
-	port?: number;
-	debug?: boolean;
-	pathToChrome?: string;
-	textColor?: string;
-}
+import settings, { IEditorSettings } from './Settings';
 
 type AsyncFn = () => Promise<void>;
 
@@ -26,7 +20,13 @@ export default class Extension {
 	private browser: Browser | null;
 	private logController: LogController;
 
-	constructor(private context: vscode.ExtensionContext, private statusBar: StatusBar) {}
+	constructor(context: vscode.ExtensionContext, private statusBar: StatusBar) {
+		settings.setContext(context);
+
+		if (settings.editor.debug) {
+			this.startExtension();
+		}
+	}
 
 	private getMessage(text: string) {
 		return `${config.appNameU}: ${text}`;
@@ -81,43 +81,42 @@ export default class Extension {
 		}
 	}
 
-	private get settings() {
-		const settings = workspace.getConfiguration(config.appName);
-
-		return {
-			port: settings.get('port'),
-			debug: settings.get('debug'),
-			pathToChrome: settings.get('pathToChrome'),
-			textColor: settings.get('textColor'),
-		} as ISettings;
-	}
-
 	private async initBrowser(port: number | string) {
 		try {
-			this.logController = new LogController(this.settings, this.context);
+			this.logController = new LogController();
 			this.browser = new Browser();
 
 			this.browser.on('update', this.logController.reset);
 			this.browser.on('log', this.logController.add);
 
-			await this.browser.init(port, this.settings.pathToChrome);
+			await this.browser.init(port);
 
 			this.showInfo(`Virtual console has been connected to http://localhost:${port}!`);
 			this.statusBar.inActive();
-			vscode.commands.executeCommand('setContext', 'browserIsStarting', true);
+			vscode.commands.executeCommand(
+				'setContext',
+				'browser-console.browserIsStarting',
+				true
+			);
+
+			vscode.commands.executeCommand(
+				'setContext',
+				'browser-console.showEnumerable',
+				settings.editor.showEnumerable
+			);
 		} catch (err) {
 			this.showError(err);
 		}
 	}
 
-	public startExtension = async () => {
+	startExtension = async () => {
 		if (!workspace.rootPath) {
 			this.showError('Workspase is empty!');
 		}
 
 		this.statusBar.inProgress();
 
-		const { port: configPort } = this.settings;
+		const { port: configPort } = settings.editor;
 		if (configPort) {
 			return this.initBrowser(configPort);
 		}
@@ -144,7 +143,7 @@ export default class Extension {
 		this.showError('Port is not valid!');
 	};
 
-	public stopExtensin = async () => {
+	stopExtensin = async () => {
 		if (!this.browser) {
 			return;
 		}
@@ -153,17 +152,21 @@ export default class Extension {
 		this.logController.reset();
 		this.logController.removeListeners();
 		this.statusBar.inStopped();
-		vscode.commands.executeCommand('setContext', 'browserIsStarting', false);
+		vscode.commands.executeCommand(
+			'setContext',
+			'browser-console.browserIsStarting',
+			false
+		);
 		this.browser = null;
 	};
 
-	public restartExtension = async () => {
+	restartExtension = async () => {
 		this.statusBar.inProgress();
 		await this.stopExtensin();
 		await this.startExtension();
 	};
 
-	public showCommands = async () => {
+	showCommands = async () => {
 		const Command: ICommand = {
 			Start: this.startExtension,
 			Stop: this.stopExtensin,
@@ -179,7 +182,7 @@ export default class Extension {
 		}
 	};
 
-	public showLine = async (position: IPosition) => {
+	showLine = async (position: IPosition) => {
 		const rootpath = vscode.Uri.file(workspace.rootPath as string);
 		const filePath = vscode.Uri.joinPath(rootpath, position.source);
 		const line = position.line - 1;

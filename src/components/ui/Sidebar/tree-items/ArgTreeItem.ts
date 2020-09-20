@@ -3,6 +3,8 @@ import path from 'path';
 import Log, { IPreview } from '../../../Log';
 
 class ArgTreeItem extends vscode.TreeItem {
+	contextValue = 'showLine';
+
 	constructor(
 		public readonly log: Log,
 		public readonly preview: IPreview,

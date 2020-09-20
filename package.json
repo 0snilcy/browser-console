@@ -41,6 +41,29 @@
 				"command": "browser-console.start",
 				"title": "Start",
 				"category": "BrowserConsole"
+			},
+			{
+				"command": "browser-console.showEnumerable",
+				"title": "Show enumerable values",
+				"category": "BrowserConsole",
+				"icon": {
+					"dark": "assets/img/link-active.svg",
+					"light": "assets/img/link-active-light.svg"
+				}
+			},
+			{
+				"command": "browser-console.hideEnumerable",
+				"title": "Hide enumerable values",
+				"category": "BrowserConsole",
+				"icon": {
+					"dark": "assets/img/link.svg",
+					"light": "assets/img/link-light.svg"
+				}
+			},
+			{
+				"command": "browser-console.showLine",
+				"title": "Go to line",
+				"category": "BrowserConsole"
 			}
 		],
 		"configuration": {
@@ -63,6 +86,11 @@
 					"description": "Color of log's decorator\n https://code.visualstudio.com/api/references/theme-color#color-formats",
 					"type": "string",
 					"default": "#0006"
+				},
+				"browserConsole.showEnumerable": {
+					"description": "Toggle visability of enumerable values",
+					"type": "boolean",
+					"default": true
 				}
 			}
 		},
@@ -71,6 +99,36 @@
 				{
 					"command": "browser-console.commands",
 					"when": "false"
+				},
+				{
+					"command": "browser-console.showEnumerable",
+					"when": "false"
+				},
+				{
+					"command": "browser-console.hideEnumerable",
+					"when": "false"
+				},
+				{
+					"command": "browser-console.hideEnumerable",
+					"when": "false"
+				}
+			],
+			"view/title": [
+				{
+					"command": "browser-console.showEnumerable",
+					"group": "navigation",
+					"when": "!browser-console.showEnumerable && view == browser-console-view"
+				},
+				{
+					"command": "browser-console.hideEnumerable",
+					"group": "navigation",
+					"when": "browser-console.showEnumerable && view == browser-console-view"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "browser-console.showLine",
+					"when": "view == browser-console-view && viewItem == showLine"
 				}
 			]
 		},
@@ -81,7 +139,7 @@
 					"name": "Browser Console",
 					"icon": "assets/img/console.svg",
 					"contextualTitle": "Browser Console",
-					"when": "browserIsStarting || config.browserConsole.debug"
+					"when": "browser-console.browserIsStarting || config.browserConsole.debug"
 				}
 			]
 		},

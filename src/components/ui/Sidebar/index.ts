@@ -1,10 +1,11 @@
 import vscode from 'vscode';
-import Log from '../../Log';
+import Log, { IDescriptor } from '../../Log';
 
 import ArgTreeItem from './tree-items/ArgTreeItem';
 import LogTreeItem from './tree-items/LogTreeItem';
 import PathTreeItem from './tree-items/PathTreeItem';
 import PropTreeItem from './tree-items/PropTreeItem';
+import settings from '../../Settings';
 // import logger from '../Logger';
 
 interface IPathLog {
@@ -20,13 +21,15 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 	readonly onDidChangeTreeData: vscode.Event<MaybeLog> = this._onDidChangeTreeData.event;
 	private sortedLogs: IPathLog = {};
 
+	constructor() {
+		settings.on('update', this.refresh);
+	}
+
 	getTreeItem(element: LogTreeItem): vscode.TreeItem {
-		// console.log('getTreeItem');
 		return element;
 	}
 
 	async getChildren(parentElement: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
-		console.log('getChildren', parentElement?.label);
 		if (parentElement) {
 			if (parentElement instanceof PathTreeItem) {
 				const { value } = parentElement;
@@ -77,10 +80,30 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 						if (response) {
 							return Promise.resolve(
 								response
-									.sort()
+									.filter(({ descriptor }) => {
+										const { showEnumerable } = settings.editor;
+
+										if (showEnumerable) {
+											return true;
+										}
+
+										return descriptor.enumerable;
+									})
+									.sort((a, b) => {
+										if (a.name.startsWith('__')) return 1;
+										if (b.name.startsWith('__')) return -1;
+										return a.name > b.name ? 1 : -1;
+									})
 									.map(
-										({ name, preview }) =>
-											new PropTreeItem(parentElement.log, name, preview)
+										({ name, preview, descriptor }) =>
+											new PropTreeItem(
+												parentElement.log,
+												name,
+												preview,
+												Object.keys(descriptor)
+													.map((key) => `${key}: ${descriptor[key as keyof IDescriptor]}`)
+													.join('\n')
+											)
 									)
 							);
 						}
@@ -129,13 +152,11 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 	};
 
 	reset = () => {
-		console.log('sidebar reset');
 		this.sortedLogs = {};
 		this.refresh();
 	};
 
 	refresh = () => {
-		console.log('sidebar refresh');
 		this._onDidChangeTreeData.fire(undefined);
 	};
 }

@@ -26,14 +26,14 @@ class Browser extends EventEmitter {
 	private serverHash: string;
 	private sourceMaps = SourceMaps;
 
-	public on<K extends keyof IBrowserEvent>(
+	on<K extends keyof IBrowserEvent>(
 		type: K,
 		listener: (arg: IBrowserEvent[K]) => void
 	): this {
 		return super.on(type, listener);
 	}
 
-	public emit<K extends keyof IBrowserEvent>(type: K, arg: IBrowserEvent[K]): boolean {
+	emit<K extends keyof IBrowserEvent>(type: K, arg: IBrowserEvent[K]): boolean {
 		return super.emit(type, arg);
 	}
 
@@ -42,7 +42,7 @@ class Browser extends EventEmitter {
 		return config.pathToChrome[platform];
 	}
 
-	public async init(port: number | string, browserDir?: string) {
+	async init(port: number | string, browserDir?: string) {
 		this.browser = await puppeteer.launch({
 			// headless: false,
 			// devtools: true,
@@ -69,7 +69,7 @@ class Browser extends EventEmitter {
 		await this.page.goto(`http://localhost:${port}/`);
 	}
 
-	public async close() {
+	async close() {
 		if (this.browser) {
 			await this.browser.close();
 		}
@@ -153,7 +153,6 @@ class Browser extends EventEmitter {
 		if (log.existOnClient) {
 			this.emit('log', log);
 
-			console.log(log.args[0]);
 			const resp = await log.getProps(log.preview[0]);
 			// console.log(resp);
 
@@ -187,6 +186,6 @@ const test = async () => {
 	const browser = new Browser();
 	await browser.init(8080);
 };
-test();
+// test();
 
 export default Browser;

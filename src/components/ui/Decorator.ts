@@ -1,7 +1,7 @@
 import vscode, { workspace, window } from 'vscode';
 import Log from '../Log';
-import { ISettings } from '../Extension';
 import { getPathOfRoot } from '../../utils';
+import settings from '../Settings';
 
 export interface IDecoratorContainer {
 	[key: string]: vscode.TextEditorDecorationType[];
@@ -9,7 +9,7 @@ export interface IDecoratorContainer {
 
 class Decorator {
 	private decorators: IDecoratorContainer = {};
-	constructor(private settings: ISettings) {}
+	private settings = settings.editor;
 
 	private getDecorator(contentText: string) {
 		return window.createTextEditorDecorationType({

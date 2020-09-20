@@ -14,10 +14,17 @@ export interface IPreview {
 	isNode: boolean;
 }
 
+export interface IDescriptor {
+	enumerable?: boolean;
+	configurable?: boolean;
+	writable?: boolean;
+	isOwn?: boolean;
+}
+
 interface IGetPropsResponse {
 	preview: IPreview;
 	name: string;
-	enumerable: boolean;
+	descriptor: IDescriptor;
 }
 
 export default class Log {
@@ -68,17 +75,40 @@ export default class Log {
 	async getProps(object: IPreview): Promise<IGetPropsResponse[] | undefined> {
 		if (object.objectId) {
 			const response = await this.getPropsByObjectId(object.objectId);
+			let nodeResult: Protocol.Runtime.PropertyDescriptor[] = [];
 
 			if (response) {
+				if (object.isNode) {
+					const nodePropsResponse = await this.getPropsByObjectId(object.objectId, false);
+					if (nodePropsResponse) {
+						nodeResult = nodePropsResponse.result;
+					}
+				}
+
 				const { result } = response;
+
 				return result
+					.concat(nodeResult)
 					.filter(({ value }) => value)
 					.map((propertyDescriptor) => {
-						const { value, name, enumerable } = propertyDescriptor;
+						const {
+							value,
+							name,
+							enumerable,
+							configurable,
+							writable,
+							isOwn,
+						} = propertyDescriptor;
+
 						return {
 							preview: this.getPreview(value as Protocol.Runtime.RemoteObject),
 							name,
-							enumerable,
+							descriptor: {
+								enumerable,
+								configurable,
+								writable,
+								isOwn,
+							},
 						};
 					});
 			}

@@ -6,6 +6,7 @@ class PropTreeItem extends vscode.TreeItem {
 		public readonly log: Log,
 		public readonly key: string,
 		public readonly preview: IPreview,
+		public readonly hoverPreview: string,
 		public readonly command?: vscode.Command,
 		public readonly collapsibleState?: vscode.TreeItemCollapsibleState
 	) {
@@ -20,6 +21,10 @@ class PropTreeItem extends vscode.TreeItem {
 
 	get description() {
 		return this.preview.title;
+	}
+
+	get tooltip() {
+		return this.hoverPreview;
 	}
 }
 

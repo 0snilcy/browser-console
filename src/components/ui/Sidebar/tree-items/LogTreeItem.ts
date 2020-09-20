@@ -3,6 +3,8 @@ import path from 'path';
 import Log from '../../../Log';
 
 class LogTreeItem extends vscode.TreeItem {
+	contextValue = 'showLine';
+
 	constructor(
 		public readonly log: Log,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode

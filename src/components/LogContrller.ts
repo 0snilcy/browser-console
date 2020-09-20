@@ -1,10 +1,8 @@
 import vscode, { workspace, window } from 'vscode';
 
 import Log from './Log';
-import { ISettings } from './Extension';
 import Sidebar from './ui/Sidebar/';
 import Decorator from './ui/Decorator';
-import { getPathOfRoot } from '../utils';
 
 export default class LogController {
 	private logs: Log[] = [];
@@ -12,13 +10,13 @@ export default class LogController {
 	private decorator: Decorator;
 	private listeners: vscode.Disposable[] = [];
 
-	constructor(settings: ISettings, context: vscode.ExtensionContext) {
+	constructor() {
 		this.sidebar = new Sidebar();
 		this.listeners.push(
 			vscode.window.registerTreeDataProvider('browser-console-view', this.sidebar)
 		);
 
-		this.decorator = new Decorator(settings);
+		this.decorator = new Decorator();
 		workspace.onDidChangeTextDocument(
 			() => this.decorator.onChange(this.logs),
 			null,
