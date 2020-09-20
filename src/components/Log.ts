@@ -12,6 +12,7 @@ export interface IPreview {
 	title: string;
 	objectId?: Protocol.Runtime.RemoteObjectId;
 	isNode: boolean;
+	isEmptyObject: boolean;
 }
 
 export interface IDescriptor {
@@ -208,6 +209,8 @@ export default class Log {
 			title: this.getPreviewOfRemoteObject(remoteObject),
 			objectId: remoteObject.objectId,
 			isNode: remoteObject.subtype === 'node',
+			isEmptyObject:
+				remoteObject.className === 'Object' && !remoteObject.preview?.properties.length,
 		} as IPreview;
 	};
 }

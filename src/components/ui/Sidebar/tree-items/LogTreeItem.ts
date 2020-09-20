@@ -5,12 +5,8 @@ import Log from '../../../Log';
 class LogTreeItem extends vscode.TreeItem {
 	contextValue = 'showLine';
 
-	constructor(
-		public readonly log: Log,
-		public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode
-			.TreeItemCollapsibleState.Expanded // public readonly command?: vscode.Command
-	) {
-		super(log.previewTitle, collapsibleState);
+	constructor(public readonly log: Log) {
+		super(log.previewTitle, vscode.TreeItemCollapsibleState.Expanded);
 		this.iconPath = path.resolve(
 			__dirname,
 			`../../../../../assets/img/log-icons/${log.type}.svg`

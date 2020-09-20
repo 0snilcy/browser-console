@@ -57,18 +57,7 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 			if (parentElement instanceof LogTreeItem) {
 				const preview = parentElement.log.preview;
 				return Promise.resolve(
-					preview.map(
-						(arg) =>
-							new ArgTreeItem(
-								parentElement.log,
-								arg
-								// {
-								// 	command: 'browser-console.showLine',
-								// 	title: '',
-								// 	arguments: [parentElement.log.originalPosition],
-								// }
-							)
-					)
+					preview.map((arg) => new ArgTreeItem(parentElement.log, arg))
 				);
 			}
 
