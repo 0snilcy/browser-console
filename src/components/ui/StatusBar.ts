@@ -2,8 +2,6 @@ import vscode, { window } from 'vscode';
 import config from '../../config';
 import extension from '../Extension';
 
-console.log(extension);
-
 class StatusBar {
 	bar: vscode.StatusBarItem;
 

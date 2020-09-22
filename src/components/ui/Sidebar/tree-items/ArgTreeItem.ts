@@ -17,10 +17,8 @@ class ArgTreeItem extends vscode.TreeItem {
 			__dirname,
 			`../../../../../assets/img/log-icons/${log.type}.svg`
 		);
-	}
 
-	get tooltip() {
-		return `${this.log.originalPosition.source}:${this.log.originalPosition.line}`;
+		this.tooltip = `${this.log.originalPosition.source}:${this.log.originalPosition.line}`;
 	}
 }
 

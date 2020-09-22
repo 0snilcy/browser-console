@@ -33,7 +33,7 @@ class LogController {
 	};
 
 	onLoad = () => {
-		this.logs.forEach(this.sidebar.add);
+		this.sidebar.emit('load', this.logs);
 		this.decorator.onChange(this.logs);
 		this.isLoad = true;
 	};

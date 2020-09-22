@@ -42,7 +42,7 @@ class Extension extends Emitter<IExtensionEvents> {
 		this.on('start', () => {
 			this.setContext('browserIsStarting', BrowserState.START);
 			this.setContext('showEnumerable', settings.editor.showEnumerable);
-			this.showInfo(`Virtual console has been connected to http://localhost:${this.port}!`);
+			// this.showInfo(`Virtual console has been connected to http://localhost:${this.port}!`);
 
 			this.logController.addListeners();
 		});
@@ -54,6 +54,20 @@ class Extension extends Emitter<IExtensionEvents> {
 		});
 
 		this.on('error', (err) => this.showError(err));
+
+		this.on('progressStart', () => {
+			window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: 'BrowserConsole is starting...',
+				},
+				() =>
+					new Promise((resolve, rejects) => {
+						this.on('progressEnd', resolve);
+						this.on('error', rejects);
+					})
+			);
+		});
 
 		if (settings.editor.debug) {
 			this.startExtension();
@@ -135,6 +149,7 @@ class Extension extends Emitter<IExtensionEvents> {
 		}
 
 		this.emit('progressStart');
+		await this.stopExtensin();
 
 		const { port: configPort } = settings.editor;
 		if (configPort) {
@@ -174,8 +189,7 @@ class Extension extends Emitter<IExtensionEvents> {
 	};
 
 	restartExtension = async () => {
-		this.emit('progressStart');
-		await this.stopExtensin();
+		// await this.stopExtensin();
 		await this.startExtension();
 	};
 

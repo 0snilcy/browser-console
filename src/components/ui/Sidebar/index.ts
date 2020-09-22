@@ -7,6 +7,7 @@ import PathTreeItem from './tree-items/PathTreeItem';
 import PropTreeItem from './tree-items/PropTreeItem';
 import settings from '../../Settings';
 import { setEmitFlags } from 'typescript';
+import { Emitter } from '../../../interfaces';
 // import logger from '../Logger';
 
 interface IPathLog {
@@ -15,14 +16,22 @@ interface IPathLog {
 
 type MaybeLog = vscode.TreeItem | undefined;
 
-class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
+interface ISidebarEvents {
+	load: Log[];
+}
+
+class Sidebar
+	extends Emitter<ISidebarEvents>
+	implements vscode.TreeDataProvider<vscode.TreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<MaybeLog> = new vscode.EventEmitter<
 		MaybeLog
 	>();
 	readonly onDidChangeTreeData: vscode.Event<MaybeLog> = this._onDidChangeTreeData.event;
 	private sortedLogs: IPathLog = {};
+	private isLoaded = false;
 
 	constructor() {
+		super();
 		settings.on('update', this.refresh);
 	}
 
@@ -107,25 +116,35 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 			return Promise.resolve([]);
 		} else {
 			// root dirs
-			return Promise.resolve(
-				Object.keys(this.clearEmptyFields(this.sortedLogs)).map(
-					(el) => new PathTreeItem(el, this.sortedLogs[el])
-				)
+			if (this.isLoaded) {
+				return Promise.resolve(
+					Object.keys(this.sortedLogs).map(
+						(el) => new PathTreeItem(el, this.sortedLogs[el])
+					)
+				);
+			}
+
+			return new Promise((resolve) =>
+				this.on('load', (logs) => {
+					this.isLoaded = true;
+					this.sortedLogs = {};
+					logs.forEach(this.reduceLogByPath);
+					resolve(
+						Object.keys(this.sortedLogs).map(
+							(el) => new PathTreeItem(el, this.sortedLogs[el])
+						)
+					);
+				})
 			);
 		}
 	}
 
-	private clearEmptyFields(obj: IPathLog): IPathLog {
-		return obj;
-		Object.keys(obj).forEach((key) => {});
-	}
-
 	add = (log: Log) => {
-		this.reduceLogByPath(log, this.sortedLogs);
+		this.reduceLogByPath(log);
 		this.refresh();
 	};
 
-	reduceLogByPath(log: Log, logsContainer: IPathLog): IPathLog {
+	reduceLogByPath = (log: Log): IPathLog => {
 		const pathArr = log.originalPosition.source.split('/').filter((el) => el);
 
 		return pathArr.reduce((obj, path, id, arr) => {
@@ -149,24 +168,12 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 
 			obj[path] = [log];
 			return obj;
-		}, logsContainer);
-	}
-
-	private clearLogsInObject(obj: IPathLog) {
-		Object.keys(obj).forEach((key) => {
-			const value = obj[key];
-
-			if (Array.isArray(value)) {
-				obj[key] = [];
-				return;
-			}
-
-			this.clearLogsInObject(value);
-		});
-	}
+		}, this.sortedLogs);
+	};
 
 	reset = () => {
-		this.clearLogsInObject(this.sortedLogs);
+		this.isLoaded = false;
+		this.refresh();
 	};
 
 	refresh = () => {

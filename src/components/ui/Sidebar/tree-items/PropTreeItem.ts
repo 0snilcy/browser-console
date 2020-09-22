@@ -17,14 +17,9 @@ class PropTreeItem extends vscode.TreeItem {
 			: vscode.TreeItemCollapsibleState.None;
 
 		// this.iconPath = path.resolve(__dirname, `../../assets/img/log-icons/${log.type}.svg`);
-	}
 
-	get description() {
-		return this.preview.title;
-	}
-
-	get tooltip() {
-		return this.hoverPreview;
+		this.description = this.preview.title;
+		this.tooltip = this.hoverPreview;
 	}
 }
 

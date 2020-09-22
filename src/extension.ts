@@ -16,8 +16,8 @@ const toggleEnumerableCb = (state: boolean) => {
 
 export async function activate(context: vscode.ExtensionContext) {
 	try {
-		logger.init(context);
 		extension.init();
+		logger.init(context);
 
 		context.subscriptions.push(
 			statusBar.bar,
