@@ -4,7 +4,7 @@ import Log from './Log';
 import Sidebar from './ui/Sidebar/';
 import Decorator from './ui/Decorator';
 
-export default class LogController {
+class LogController {
 	private logs: Log[] = [];
 	private sidebar: Sidebar;
 	private decorator: Decorator;
@@ -13,24 +13,7 @@ export default class LogController {
 
 	constructor() {
 		this.sidebar = new Sidebar();
-		this.listeners.push(
-			vscode.window.registerTreeDataProvider('browser-console-view', this.sidebar)
-		);
-
 		this.decorator = new Decorator();
-		workspace.onDidChangeTextDocument(
-			() => this.decorator.onChange(this.logs),
-			null,
-			this.listeners
-		);
-
-		window.onDidChangeActiveTextEditor(
-			() => this.decorator.onChange(this.logs),
-			null,
-			this.listeners
-		);
-
-		workspace.onWillSaveTextDocument(this.onUpdate, null, this.listeners);
 	}
 
 	onLog = (log: Log) => {
@@ -55,7 +38,30 @@ export default class LogController {
 		this.isLoad = true;
 	};
 
+	addListeners() {
+		this.listeners.push(
+			vscode.window.registerTreeDataProvider('browser-console-view', this.sidebar)
+		);
+
+		workspace.onDidChangeTextDocument(
+			() => this.decorator.onChange(this.logs),
+			null,
+			this.listeners
+		);
+
+		window.onDidChangeActiveTextEditor(
+			() => this.decorator.onChange(this.logs),
+			null,
+			this.listeners
+		);
+
+		workspace.onWillSaveTextDocument(this.onUpdate, null, this.listeners);
+	}
+
 	removeListeners() {
+		this.onUpdate();
 		this.listeners.forEach((listener) => listener.dispose());
 	}
 }
+
+export default LogController;

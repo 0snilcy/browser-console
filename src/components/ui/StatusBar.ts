@@ -1,7 +1,10 @@
 import vscode, { window } from 'vscode';
 import config from '../../config';
+import extension from '../Extension';
 
-export default class StatusBar {
+console.log(extension);
+
+class StatusBar {
 	bar: vscode.StatusBarItem;
 
 	constructor() {
@@ -9,17 +12,19 @@ export default class StatusBar {
 		this.bar.text = `$(browser) ${config.appNameU}`;
 		this.bar.show();
 		this.bar.command = 'browser-console.commands';
-	}
 
-	inActive() {
-		this.bar.text = `$(play) ${config.appNameU}`;
-	}
+		extension.on('start', () => {
+			this.bar.text = `$(play) ${config.appNameU}`;
+		});
 
-	inProgress() {
-		this.bar.text = `$(ellipsis) ${config.appNameU}`;
-	}
+		extension.on(['stop', 'error'], () => {
+			this.bar.text = `$(browser) ${config.appNameU}`;
+		});
 
-	inStopped() {
-		this.bar.text = `$(browser) ${config.appNameU}`;
+		extension.on('progressStart', () => {
+			this.bar.text = `$(ellipsis) ${config.appNameU}`;
+		});
 	}
 }
+
+export default new StatusBar();

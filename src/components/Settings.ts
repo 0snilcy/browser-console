@@ -1,5 +1,4 @@
-import { EventEmitter } from 'events';
-import vscode, { workspace } from 'vscode';
+import { workspace } from 'vscode';
 import config from '../config';
 import { Emitter } from '../interfaces';
 
@@ -17,7 +16,6 @@ interface ISettingsEvents {
 
 class Settigns extends Emitter<ISettingsEvents> {
 	private _editor: IEditorSettings = {};
-	private _context: vscode.ExtensionContext;
 
 	constructor() {
 		super();
@@ -37,20 +35,12 @@ class Settigns extends Emitter<ISettingsEvents> {
 		return this._editor;
 	}
 
-	get context() {
-		return this._context;
-	}
-
 	update(settings: IEditorSettings) {
 		this._editor = {
 			...this.editor,
 			...settings,
 		};
 		this.emit('update', this._editor);
-	}
-
-	setContext(context: vscode.ExtensionContext) {
-		this._context = context;
 	}
 }
 

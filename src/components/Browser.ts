@@ -58,7 +58,7 @@ class Browser extends Emitter<IBrowserEvent> {
 		this.CDPclient.on('Runtime.consoleAPICalled', this.onConsoleLog);
 		this.CDPclient.on('Network.webSocketFrameReceived', this.onWSReloadPage);
 
-		await this.page.goto(`http://localhost:${port}/`);
+		this.page.goto(`http://localhost:${port}/`);
 	}
 
 	async close() {

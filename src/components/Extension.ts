@@ -3,11 +3,9 @@ import Browser from './Browser';
 import LogController from './LogContrller';
 import config from '../config';
 import logger from './Logger';
-import StatusBar from './ui/StatusBar';
 import { IPosition } from './Log';
 import { URL } from 'url';
-import settings, { IEditorSettings } from './Settings';
-import { resolve } from 'dns';
+import settings from './Settings';
 import { Emitter } from '../interfaces';
 
 type AsyncFn = () => Promise<void>;
@@ -18,18 +16,44 @@ interface ICommand {
 	Restart: AsyncFn;
 }
 
+enum BrowserState {
+	STOP = 0,
+	START = 1,
+}
+
 interface IExtensionEvents {
 	start: undefined;
 	stop: undefined;
+	progressStart: undefined;
+	progressEnd: undefined;
+	error: string | Error;
 }
 
-export default class Extension extends Emitter<IExtensionEvents> {
+class Extension extends Emitter<IExtensionEvents> {
 	private browser: Browser | null;
-	private logController: LogController;
+	private port: number | string;
+	private logController = new LogController();
 
-	constructor(context: vscode.ExtensionContext, private statusBar: StatusBar) {
-		super();
-		settings.setContext(context);
+	private setContext(key: string, value: any) {
+		vscode.commands.executeCommand('setContext', `browser-console.${key}`, value);
+	}
+
+	init() {
+		this.on('start', () => {
+			this.setContext('browserIsStarting', BrowserState.START);
+			this.setContext('showEnumerable', settings.editor.showEnumerable);
+			this.showInfo(`Virtual console has been connected to http://localhost:${this.port}!`);
+
+			this.logController.addListeners();
+		});
+
+		this.on('stop', () => {
+			this.setContext('browserIsStarting', BrowserState.STOP);
+
+			this.logController.removeListeners();
+		});
+
+		this.on('error', (err) => this.showError(err));
 
 		if (settings.editor.debug) {
 			this.startExtension();
@@ -90,31 +114,18 @@ export default class Extension extends Emitter<IExtensionEvents> {
 	}
 
 	private async initBrowser(port: number | string) {
+		this.port = port;
 		try {
-			this.logController = new LogController();
 			this.browser = new Browser();
-
 			this.browser.on('load', this.logController.onLoad);
 			this.browser.on('update', this.logController.onUpdate);
 			this.browser.on('log', this.logController.onLog);
-
 			await this.browser.init(port);
 
-			this.showInfo(`Virtual console has been connected to http://localhost:${port}!`);
-			this.statusBar.inActive();
-			vscode.commands.executeCommand(
-				'setContext',
-				'browser-console.browserIsStarting',
-				true
-			);
-
-			vscode.commands.executeCommand(
-				'setContext',
-				'browser-console.showEnumerable',
-				settings.editor.showEnumerable
-			);
+			this.emit('start');
+			this.emit('progressEnd');
 		} catch (err) {
-			this.showError(err);
+			this.emit('error', err);
 		}
 	}
 
@@ -123,7 +134,7 @@ export default class Extension extends Emitter<IExtensionEvents> {
 			this.showError('Workspase is empty!');
 		}
 
-		this.statusBar.inProgress();
+		this.emit('progressStart');
 
 		const { port: configPort } = settings.editor;
 		if (configPort) {
@@ -158,19 +169,12 @@ export default class Extension extends Emitter<IExtensionEvents> {
 		}
 
 		await this.browser.close();
-		this.logController.onUpdate();
-		this.logController.removeListeners();
-		this.statusBar.inStopped();
-		vscode.commands.executeCommand(
-			'setContext',
-			'browser-console.browserIsStarting',
-			false
-		);
 		this.browser = null;
+		this.emit('stop');
 	};
 
 	restartExtension = async () => {
-		this.statusBar.inProgress();
+		this.emit('progressStart');
 		await this.stopExtensin();
 		await this.startExtension();
 	};
@@ -211,3 +215,5 @@ export default class Extension extends Emitter<IExtensionEvents> {
 		}
 	};
 }
+
+export default new Extension();
