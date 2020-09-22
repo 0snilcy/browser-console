@@ -9,6 +9,7 @@ export default class LogController {
 	private sidebar: Sidebar;
 	private decorator: Decorator;
 	private listeners: vscode.Disposable[] = [];
+	private isLoad = false;
 
 	constructor() {
 		this.sidebar = new Sidebar();
@@ -29,19 +30,29 @@ export default class LogController {
 			this.listeners
 		);
 
-		workspace.onWillSaveTextDocument(this.reset, null, this.listeners);
+		workspace.onWillSaveTextDocument(this.onUpdate, null, this.listeners);
 	}
 
-	add = (log: Log) => {
+	onLog = (log: Log) => {
 		this.logs.push(log);
-		this.sidebar.add(log);
-		this.decorator.onChange([log]);
+
+		if (this.isLoad) {
+			this.sidebar.add(log);
+			this.decorator.onChange([log]);
+		}
 	};
 
-	reset = () => {
+	onUpdate = () => {
 		this.logs = [];
 		this.sidebar.reset();
 		this.decorator.reset();
+		this.isLoad = false;
+	};
+
+	onLoad = () => {
+		this.logs.forEach(this.sidebar.add);
+		this.decorator.onChange(this.logs);
+		this.isLoad = true;
 	};
 
 	removeListeners() {

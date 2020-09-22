@@ -109,7 +109,7 @@
 					"when": "false"
 				},
 				{
-					"command": "browser-console.hideEnumerable",
+					"command": "browser-console.showLine",
 					"when": "false"
 				}
 			],
@@ -167,19 +167,18 @@
 	},
 	"devDependencies": {
 		"@types/node": "^12.12.0",
-		"@types/puppeteer-core": "^2.0.0",
-		"@types/sockjs-client": "^1.1.1",
 		"@types/vscode": "^1.32.0",
+		"@types/puppeteer-core": "^2.0.0",
 		"@typescript-eslint/eslint-plugin": "^3.0.2",
 		"@typescript-eslint/parser": "^3.0.2",
-		"devtools-protocol": "^0.0.802093",
 		"eslint": "^7.1.0",
 		"nodemon": "2.0.4",
-		"typescript": "^3.9.4"
+		"typescript": "4.0.3"
 	},
 	"dependencies": {
 		"puppeteer-core": "^5.2.1",
-		"source-map": "^0.8.0-beta.0"
+		"source-map": "^0.8.0-beta.0",
+		"devtools-protocol": "^0.0.802093"
 	},
 	"nodemonConfig": {
 		"env": {

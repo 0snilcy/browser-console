@@ -1,4 +1,4 @@
-import vscode, { workspace, window } from 'vscode';
+import vscode, { workspace } from 'vscode';
 
 export const getPathOfRoot = (path: string): string => {
 	const rootPath = vscode.Uri.file(workspace.rootPath as string);

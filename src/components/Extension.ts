@@ -1,4 +1,4 @@
-import vscode, { workspace, window, Command } from 'vscode';
+import vscode, { workspace, window } from 'vscode';
 import Browser from './Browser';
 import LogController from './LogContrller';
 import config from '../config';
@@ -7,6 +7,8 @@ import StatusBar from './ui/StatusBar';
 import { IPosition } from './Log';
 import { URL } from 'url';
 import settings, { IEditorSettings } from './Settings';
+import { resolve } from 'dns';
+import { Emitter } from '../interfaces';
 
 type AsyncFn = () => Promise<void>;
 
@@ -16,11 +18,17 @@ interface ICommand {
 	Restart: AsyncFn;
 }
 
-export default class Extension {
+interface IExtensionEvents {
+	start: undefined;
+	stop: undefined;
+}
+
+export default class Extension extends Emitter<IExtensionEvents> {
 	private browser: Browser | null;
 	private logController: LogController;
 
 	constructor(context: vscode.ExtensionContext, private statusBar: StatusBar) {
+		super();
 		settings.setContext(context);
 
 		if (settings.editor.debug) {
@@ -86,8 +94,9 @@ export default class Extension {
 			this.logController = new LogController();
 			this.browser = new Browser();
 
-			this.browser.on('update', this.logController.reset);
-			this.browser.on('log', this.logController.add);
+			this.browser.on('load', this.logController.onLoad);
+			this.browser.on('update', this.logController.onUpdate);
+			this.browser.on('log', this.logController.onLog);
 
 			await this.browser.init(port);
 
@@ -149,7 +158,7 @@ export default class Extension {
 		}
 
 		await this.browser.close();
-		this.logController.reset();
+		this.logController.onUpdate();
 		this.logController.removeListeners();
 		this.statusBar.inStopped();
 		vscode.commands.executeCommand(

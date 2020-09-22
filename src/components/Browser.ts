@@ -6,11 +6,7 @@ import os from 'os';
 import SourceMaps from './SourceMaps';
 import config from '../config';
 import Log from './Log';
-
-export interface IBrowserEvent {
-	log: Log;
-	update: boolean;
-}
+import { Emitter } from '../interfaces';
 
 export interface IFileLoaderResponse {
 	status: number;
@@ -19,23 +15,18 @@ export interface IFileLoaderResponse {
 	content?: string;
 }
 
-class Browser extends EventEmitter {
+export interface IBrowserEvent {
+	log: Log;
+	update: undefined;
+	load: undefined;
+}
+
+class Browser extends Emitter<IBrowserEvent> {
 	private browser: puppeteer.Browser;
 	private page: puppeteer.Page;
 	private CDPclient: puppeteer.CDPSession;
 	private serverHash: string;
 	private sourceMaps = SourceMaps;
-
-	on<K extends keyof IBrowserEvent>(
-		type: K,
-		listener: (arg: IBrowserEvent[K]) => void
-	): this {
-		return super.on(type, listener);
-	}
-
-	emit<K extends keyof IBrowserEvent>(type: K, arg: IBrowserEvent[K]): boolean {
-		return super.emit(type, arg);
-	}
 
 	private get defaultBrowserDir() {
 		const platform = os.platform();
@@ -57,7 +48,8 @@ class Browser extends EventEmitter {
 
 		// this.page.on('close', () => console.log('close'));
 		// this.page.on('domcontentloaded', () => console.log('domcontentloaded'));
-		// this.page.on('load', () => console.log('load'));
+		this.page.on('load', () => this.emit('load'));
+
 		// this.page.on('console', console.log);
 
 		this.CDPclient = await this.page.target().createCDPSession();
@@ -100,7 +92,7 @@ class Browser extends EventEmitter {
 					}
 
 					this.serverHash = parsedPayload.data;
-					this.emit('update', true);
+					this.emit('update');
 				}
 			});
 		}
@@ -152,12 +144,7 @@ class Browser extends EventEmitter {
 
 		if (log.existOnClient) {
 			this.emit('log', log);
-
-			const resp = await log.getProps(log.preview[0]);
-			// console.log(resp);
-
-			// if (!value) return;
-			// console.log(log.getPreview(value));
+			// console.log(log);
 		}
 	};
 
@@ -182,7 +169,6 @@ class Browser extends EventEmitter {
 
 const test = async () => {
 	console.clear();
-
 	const browser = new Browser();
 	await browser.init(8080);
 };

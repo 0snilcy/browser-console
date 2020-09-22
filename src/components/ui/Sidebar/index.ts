@@ -6,6 +6,7 @@ import LogTreeItem from './tree-items/LogTreeItem';
 import PathTreeItem from './tree-items/PathTreeItem';
 import PropTreeItem from './tree-items/PropTreeItem';
 import settings from '../../Settings';
+import { setEmitFlags } from 'typescript';
 // import logger from '../Logger';
 
 interface IPathLog {
@@ -25,10 +26,11 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 		settings.on('update', this.refresh);
 	}
 
-	getTreeItem(element: LogTreeItem): vscode.TreeItem {
+	getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
 		return element;
 	}
 
+	// TODO vscode need Promise, but TreeDataProvider Thenable
 	async getChildren(parentElement: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
 		if (parentElement) {
 			if (parentElement instanceof PathTreeItem) {
@@ -106,15 +108,27 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 		} else {
 			// root dirs
 			return Promise.resolve(
-				Object.keys(this.sortedLogs).map((el) => new PathTreeItem(el, this.sortedLogs[el]))
+				Object.keys(this.clearEmptyFields(this.sortedLogs)).map(
+					(el) => new PathTreeItem(el, this.sortedLogs[el])
+				)
 			);
 		}
 	}
 
+	private clearEmptyFields(obj: IPathLog): IPathLog {
+		return obj;
+		Object.keys(obj).forEach((key) => {});
+	}
+
 	add = (log: Log) => {
+		this.reduceLogByPath(log, this.sortedLogs);
+		this.refresh();
+	};
+
+	reduceLogByPath(log: Log, logsContainer: IPathLog): IPathLog {
 		const pathArr = log.originalPosition.source.split('/').filter((el) => el);
 
-		pathArr.reduce((obj, path, id, arr) => {
+		return pathArr.reduce((obj, path, id, arr) => {
 			const existLogs = obj[path];
 			const isLast = !arr[id + 1];
 
@@ -135,14 +149,24 @@ class Sidebar implements vscode.TreeDataProvider<vscode.TreeItem> {
 
 			obj[path] = [log];
 			return obj;
-		}, this.sortedLogs);
+		}, logsContainer);
+	}
 
-		this.refresh();
-	};
+	private clearLogsInObject(obj: IPathLog) {
+		Object.keys(obj).forEach((key) => {
+			const value = obj[key];
+
+			if (Array.isArray(value)) {
+				obj[key] = [];
+				return;
+			}
+
+			this.clearLogsInObject(value);
+		});
+	}
 
 	reset = () => {
-		this.sortedLogs = {};
-		this.refresh();
+		this.clearLogsInObject(this.sortedLogs);
 	};
 
 	refresh = () => {

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import vscode, { workspace } from 'vscode';
 import config from '../config';
+import { Emitter } from '../interfaces';
 
 export interface IEditorSettings {
 	port?: number;
@@ -10,7 +11,11 @@ export interface IEditorSettings {
 	showEnumerable?: boolean;
 }
 
-class Settigns extends EventEmitter {
+interface ISettingsEvents {
+	update: IEditorSettings;
+}
+
+class Settigns extends Emitter<ISettingsEvents> {
 	private _editor: IEditorSettings = {};
 	private _context: vscode.ExtensionContext;
 
