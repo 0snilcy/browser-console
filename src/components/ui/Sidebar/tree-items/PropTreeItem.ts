@@ -6,20 +6,17 @@ class PropTreeItem extends vscode.TreeItem {
 		public readonly log: Log,
 		public readonly key: string,
 		public readonly preview: IPreview,
-		public readonly hoverPreview: string,
-		public readonly command?: vscode.Command,
-		public readonly collapsibleState?: vscode.TreeItemCollapsibleState
+		public readonly tooltip: string,
+		public readonly command?: vscode.Command
 	) {
-		super(key + ':', collapsibleState);
+		super(key + ':');
 
 		this.collapsibleState = preview.objectId
 			? vscode.TreeItemCollapsibleState.Collapsed
 			: vscode.TreeItemCollapsibleState.None;
 
-		// this.iconPath = path.resolve(__dirname, `../../assets/img/log-icons/${log.type}.svg`);
-
+		this.id = key + this.preview.title;
 		this.description = this.preview.title;
-		this.tooltip = this.hoverPreview;
 	}
 }
 

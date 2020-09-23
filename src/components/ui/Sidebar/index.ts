@@ -80,28 +80,25 @@ class Sidebar
 						if (response) {
 							return Promise.resolve(
 								response
-									.filter(({ descriptor }) => {
-										const { showEnumerable } = settings.editor;
-
-										if (showEnumerable) {
-											return true;
-										}
-
-										return descriptor.enumerable;
-									})
+									.filter(
+										({ descriptors }) =>
+											settings.editor.showEnumerable || descriptors.enumerable
+									)
 									.sort((a, b) => {
+										if (a.name.startsWith('[[')) return 1;
+										if (b.name.startsWith('[[')) return -1;
 										if (a.name.startsWith('__')) return 1;
 										if (b.name.startsWith('__')) return -1;
 										return a.name > b.name ? 1 : -1;
 									})
 									.map(
-										({ name, preview, descriptor }) =>
+										({ name, preview, descriptors }) =>
 											new PropTreeItem(
 												parentElement.log,
 												name,
 												preview,
-												Object.keys(descriptor)
-													.map((key) => `${key}: ${descriptor[key as keyof IDescriptor]}`)
+												Object.keys(descriptors)
+													.map((key) => `${key}: ${descriptors[key as keyof IDescriptor]}`)
 													.join('\n')
 											)
 									)
@@ -124,8 +121,8 @@ class Sidebar
 				);
 			}
 
-			return new Promise((resolve) =>
-				this.on('load', (logs) => {
+			return new Promise((resolve) => {
+				this.once('load', (logs) => {
 					this.isLoaded = true;
 					this.sortedLogs = {};
 					logs.forEach(this.reduceLogByPath);
@@ -134,8 +131,8 @@ class Sidebar
 							(el) => new PathTreeItem(el, this.sortedLogs[el])
 						)
 					);
-				})
-			);
+				});
+			});
 		}
 	}
 

@@ -144,7 +144,6 @@ class Browser extends Emitter<IBrowserEvent> {
 
 		if (log.existOnClient) {
 			this.emit('log', log);
-			// console.log(log);
 		}
 	};
 
@@ -172,6 +171,7 @@ const test = async () => {
 	const browser = new Browser();
 	await browser.init(8080);
 };
+
 // test();
 
 export default Browser;

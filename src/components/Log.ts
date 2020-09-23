@@ -11,21 +11,19 @@ export interface IPosition {
 export interface IPreview {
 	title: string;
 	objectId?: Protocol.Runtime.RemoteObjectId;
-	isNode: boolean;
-	isEmptyObject: boolean;
 }
 
 export interface IDescriptor {
 	enumerable?: boolean;
 	configurable?: boolean;
 	writable?: boolean;
-	isOwn?: boolean;
+	internalProperties?: boolean;
 }
 
 interface IGetPropsResponse {
 	preview: IPreview;
 	name: string;
-	descriptor: IDescriptor;
+	descriptors: IDescriptor;
 }
 
 export default class Log {
@@ -35,6 +33,7 @@ export default class Log {
 	args: Protocol.Runtime.RemoteObject[];
 	generatedPosition: IPosition;
 	originalPosition: IPosition;
+	url: string;
 
 	constructor(
 		logEvent: Protocol.Runtime.ConsoleAPICalledEvent,
@@ -55,64 +54,85 @@ export default class Log {
 		const callFrame = stackTrace.callFrames[0];
 		const { url, lineNumber, columnNumber } = callFrame;
 
+		this.url = url;
 		this.generatedPosition = {
 			line: lineNumber,
 			column: columnNumber,
 			source: this.getPathFromURL(url),
 		};
 
-		const sourceMapPosition = this.sourceMaps.getOriginalPosition(url, {
+		this.originalPosition = this.getOriginalPosition(lineNumber, columnNumber);
+	}
+
+	private getOriginalPosition(lineNumber: number, columnNumber: number) {
+		const { line, column, source } = this.sourceMaps.getOriginalPosition(this.url, {
 			line: lineNumber + 1,
 			column: columnNumber + 1,
 		});
 
-		this.originalPosition = {
-			line: sourceMapPosition.line as number,
-			column: sourceMapPosition.column as number,
-			source: sourceMapPosition.source ? this.getPathFromURL(sourceMapPosition.source) : '',
-		};
+		return {
+			line,
+			column,
+			source: source ? this.getPathFromURL(source) : '',
+		} as IPosition;
+	}
+
+	private foramtProps(props: Protocol.Runtime.PropertyDescriptor[]) {
+		const descriptors = ['configurable', 'enumerable', 'writable'] as const;
+
+		return props
+			.filter(({ value }) => value)
+			.map((propertyDescriptor) => {
+				const { value, name } = propertyDescriptor;
+
+				return {
+					preview: this.getPreview(value as Protocol.Runtime.RemoteObject),
+					name,
+					descriptors: descriptors
+						.filter((key) => Object.hasOwnProperty.call(propertyDescriptor, key))
+						.reduce(
+							(obj: IDescriptor, key) => ((obj[key] = propertyDescriptor[key]), obj),
+							{}
+						),
+				};
+			});
+	}
+
+	private foramtInternalProps(props: Protocol.Runtime.InternalPropertyDescriptor[]) {
+		return props
+			.filter(({ value }) => value)
+			.map((propertyDescriptor) => {
+				const { value, name } = propertyDescriptor;
+
+				console.log(propertyDescriptor);
+
+				return {
+					preview: this.getPreview(value as Protocol.Runtime.RemoteObject),
+					name,
+					descriptors: {
+						internalProperties: true,
+					},
+				};
+			});
 	}
 
 	async getProps(object: IPreview): Promise<IGetPropsResponse[] | undefined> {
 		if (object.objectId) {
-			const response = await this.getPropsByObjectId(object.objectId);
-			let nodeResult: Protocol.Runtime.PropertyDescriptor[] = [];
+			const ownPropsResponse = (await this.getPropsByObjectId(object.objectId)) || {};
+			const propsResponse = (await this.getPropsByObjectId(object.objectId, false)) || {};
 
-			if (response) {
-				if (object.isNode) {
-					const nodePropsResponse = await this.getPropsByObjectId(object.objectId, false);
-					if (nodePropsResponse) {
-						nodeResult = nodePropsResponse.result;
-					}
-				}
+			const props = ([
+				ownPropsResponse,
+				propsResponse,
+			] as Protocol.Runtime.GetPropertiesResponse[])
+				.map(({ result = [], internalProperties = [] }) => [
+					this.foramtProps(result),
+					this.foramtInternalProps(internalProperties),
+				])
+				.flat(2);
 
-				const { result } = response;
-
-				return result
-					.concat(nodeResult)
-					.filter(({ value }) => value)
-					.map((propertyDescriptor) => {
-						const {
-							value,
-							name,
-							enumerable,
-							configurable,
-							writable,
-							isOwn,
-						} = propertyDescriptor;
-
-						return {
-							preview: this.getPreview(value as Protocol.Runtime.RemoteObject),
-							name,
-							descriptor: {
-								enumerable,
-								configurable,
-								writable,
-								isOwn,
-							},
-						};
-					});
-			}
+			console.log(props);
+			return props;
 		}
 	}
 
@@ -140,33 +160,48 @@ export default class Log {
 		}
 	}
 
-	private objectToString(obj: Protocol.Runtime.ObjectPreview) {
+	private objectPreviewToString(obj: Protocol.Runtime.ObjectPreview) {
 		return this.quoteString(obj.type === 'string', obj.description);
 	}
 
 	private entryToString(entry: Protocol.Runtime.EntryPreview | undefined) {
 		if (entry?.value) {
 			if (entry.key) {
-				return `${this.objectToString(entry.key)} => ${this.objectToString(entry.value)}`;
+				return `${this.objectPreviewToString(entry.key)} => ${this.objectPreviewToString(
+					entry.value
+				)}`;
 			}
 
-			return this.objectToString(entry.value);
+			return this.objectPreviewToString(entry.value);
 		}
 	}
+
+	// private objectToString(obj: any): string {}
 
 	getPreviewOfRemoteObject = (object: Protocol.Runtime.RemoteObject) => {
 		const ignoreClasses = ['Object', 'Function'];
 		const { type, value, subtype, preview, description, className } = object;
 		const props = preview?.properties as Protocol.Runtime.PropertyPreview[];
 
+		if (subtype === ('internal#location' as 'null')) {
+			const { source, line } = this.getOriginalPosition(
+				value.lineNumber,
+				value.columnNumber
+			);
+			return `${source}:${line}`;
+		}
+
 		if (Object.hasOwnProperty.call(object, 'value')) {
 			return this.valueToString(value);
 		}
 
 		const classDescription =
-			className && !ignoreClasses.includes(className) ? `${className}: ` : '';
+			className && !ignoreClasses.includes(className) ? `${className} ` : '';
 
 		switch (type) {
+			case 'undefined':
+				return 'undefined';
+
 			case 'object':
 				if (!subtype) {
 					return `${classDescription}{${preview?.properties
@@ -174,26 +209,29 @@ export default class Log {
 						.join(', ')}}`;
 				}
 
-				switch (subtype) {
-					case 'array':
-						return `[${preview?.properties.map(this.propToString, this).join(', ')}]`;
+				switch (className) {
+					case 'Array':
+						if (preview?.properties) {
+							return `[${preview?.properties.map(this.propToString, this).join(', ')}]`;
+						}
+						break;
 
-					case 'promise':
-						return `${description}: {<${this.propToString(props[0])}>: ${this.propToString(
+					case 'Promise':
+						return `${description}: {<${this.propToString(props[0])}> ${this.propToString(
 							props[1]
 						)}}`;
 
-					case 'map':
-					case 'set':
-					case 'weakmap':
-					case 'weakset':
-						return `${description}: {${preview?.entries
+					case 'Map':
+					case 'Set':
+					case 'WeakMap':
+					case 'WeakSet':
+						return `${description} {${preview?.entries
 							?.map(this.entryToString, this)
 							.join(', ')}}`;
 				}
 		}
 
-		return `${classDescription}${description}`;
+		return description?.replace(/[\s]+/g, ' ');
 	};
 
 	get preview() {
@@ -208,9 +246,6 @@ export default class Log {
 		return {
 			title: this.getPreviewOfRemoteObject(remoteObject),
 			objectId: remoteObject.objectId,
-			isNode: remoteObject.subtype === 'node',
-			isEmptyObject:
-				remoteObject.className === 'Object' && !remoteObject.preview?.properties.length,
 		} as IPreview;
 	};
 }
