@@ -6,7 +6,6 @@ import LogTreeItem from './tree-items/LogTreeItem';
 import PathTreeItem from './tree-items/PathTreeItem';
 import PropTreeItem from './tree-items/PropTreeItem';
 import settings from '../../Settings';
-import { setEmitFlags } from 'typescript';
 import { Emitter } from '../../../interfaces';
 // import logger from '../Logger';
 
@@ -39,7 +38,7 @@ class Sidebar
 		return element;
 	}
 
-	// TODO vscode need Promise, but TreeDataProvider Thenable
+	// TODO vscode need Promise, but TreeDataProvider Thenable (linter error)
 	async getChildren(parentElement: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
 		if (parentElement) {
 			if (parentElement instanceof PathTreeItem) {
@@ -49,26 +48,38 @@ class Sidebar
 					if (Array.isArray(value)) {
 						// logs
 						return Promise.resolve(
-							value.map((log: Log) => {
-								const first = log.args[0];
-								const preview = log.getPreview(first);
-								return log.args.length > 1
-									? new LogTreeItem(log)
-									: new ArgTreeItem(log, preview);
-							})
+							value
+								.map((log: Log) => {
+									const first = log.args[0];
+									const preview = log.getPreview(first);
+
+									const { line, column, source } = log.originalPosition;
+									return log.args.length > 1
+										? new LogTreeItem(log)
+										: new ArgTreeItem(`${source}:${line}:${column}[0]`, log, preview);
+								})
+								.sort(
+									({ log: logA }, { log: logB }) =>
+										logA.originalPosition.line - logB.originalPosition.line
+								)
 						);
 					}
 
 				// include dirs
 				return Promise.resolve(
-					Object.keys(value).map((path) => new PathTreeItem(path, value[path]))
+					Object.keys(value).map(
+						(path) => new PathTreeItem(`${parentElement.id}/${path}`, path, value[path])
+					)
 				);
 			}
 
 			if (parentElement instanceof LogTreeItem) {
 				const preview = parentElement.log.preview;
 				return Promise.resolve(
-					preview.map((arg) => new ArgTreeItem(parentElement.log, arg))
+					preview.map(
+						(arg, id) =>
+							new ArgTreeItem(`${parentElement.id}[${id}]`, parentElement.log, arg)
+					)
 				);
 			}
 
@@ -89,6 +100,8 @@ class Sidebar
 										if (b.name.startsWith('[[')) return -1;
 										if (a.name.startsWith('__')) return 1;
 										if (b.name.startsWith('__')) return -1;
+										if (a.name.startsWith('Symbol(')) return 1;
+										if (b.name.startsWith('Symbol(')) return -1;
 										return a.name > b.name ? 1 : -1;
 									})
 									.map(
@@ -99,7 +112,8 @@ class Sidebar
 												preview,
 												Object.keys(descriptors)
 													.map((key) => `${key}: ${descriptors[key as keyof IDescriptor]}`)
-													.join('\n')
+													.join('\n'),
+												`${parentElement.id}['${name}']`
 											)
 									)
 							);
@@ -116,7 +130,7 @@ class Sidebar
 			if (this.isLoaded) {
 				return Promise.resolve(
 					Object.keys(this.sortedLogs).map(
-						(el) => new PathTreeItem(el, this.sortedLogs[el])
+						(path) => new PathTreeItem(path, path, this.sortedLogs[path])
 					)
 				);
 			}
@@ -128,7 +142,7 @@ class Sidebar
 					logs.forEach(this.reduceLogByPath);
 					resolve(
 						Object.keys(this.sortedLogs).map(
-							(el) => new PathTreeItem(el, this.sortedLogs[el])
+							(path) => new PathTreeItem(path, path, this.sortedLogs[path])
 						)
 					);
 				});

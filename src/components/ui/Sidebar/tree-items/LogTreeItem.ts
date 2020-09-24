@@ -1,6 +1,7 @@
 import vscode from 'vscode';
 import path from 'path';
 import Log from '../../../Log';
+import settings from '../../../Settings';
 
 class LogTreeItem extends vscode.TreeItem {
 	contextValue = 'showLine';
@@ -11,6 +12,9 @@ class LogTreeItem extends vscode.TreeItem {
 			__dirname,
 			`../../../../../assets/img/log-icons/${log.type}.svg`
 		);
+		const { line, column, source } = this.log.originalPosition;
+		this.id = `${source}:${line}:${column}`;
+		this.tooltip = (settings.editor.debug ? new.target.name : '') + this.id;
 	}
 }
 

@@ -211,7 +211,7 @@ export default class Log {
 
 				switch (className) {
 					case 'Array':
-						if (preview?.properties) {
+						if (preview?.properties && !preview.overflow) {
 							return `[${preview?.properties.map(this.propToString, this).join(', ')}]`;
 						}
 						break;

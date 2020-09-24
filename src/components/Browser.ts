@@ -140,6 +140,7 @@ class Browser extends Emitter<IBrowserEvent> {
 			// if (!event.args) return;
 			// const resp = await this.getPropsByObjectId(event.args[0].objectId);
 			// console.log(resp?.result);
+			// console.log(log.getPreview(resp?.result[2].value));
 		}
 
 		if (log.existOnClient) {
