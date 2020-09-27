@@ -8,6 +8,7 @@ export interface IEditorSettings {
 	pathToChrome?: string;
 	textColor?: string;
 	showEnumerable?: boolean;
+	treeViewMode?: boolean;
 }
 
 interface ISettingsEvents {

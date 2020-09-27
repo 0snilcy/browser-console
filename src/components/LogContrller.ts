@@ -4,6 +4,7 @@ import Log from './Log';
 import Decorator from './ui/Decorator';
 import sidebar from './ui/sidebar/Sidebar';
 import logger from './Logger';
+import settings from './Settings';
 
 class LogController {
 	private logs: Log[] = [];
@@ -12,6 +13,9 @@ class LogController {
 	private isLoad = false;
 	private sidebar = sidebar;
 
+	/**
+	 * Adds log to array and UI if the page has been loaded
+	 */
 	log = (log: Log) => {
 		this.logs.push(log);
 		logger.log('log', {
@@ -20,11 +24,17 @@ class LogController {
 			logTitle: log.previewTitle,
 		});
 
-		if (this.isLoad) {
-			this.sidebar.add(this.logs);
-			this.decorator.add([log]);
+		if (settings.editor.treeViewMode && !this.isLoad) {
+			return;
 		}
+
+		this.sidebar.add(this.logs);
+		this.decorator.add([log]);
 	};
+
+	/**
+	 * Clear the log array and wait "load"
+	 */
 	update = () => {
 		this.logs = [];
 
@@ -34,10 +44,19 @@ class LogController {
 		});
 
 		this.isLoad = false;
-		this.sidebar.update();
+
+		if (settings.editor.treeViewMode) {
+			this.sidebar.update();
+		} else {
+			this.sidebar.clear();
+		}
+
 		this.decorator.reset();
 	};
 
+	/**
+	 * Fired, when the page has loaded
+	 */
 	load = () => {
 		logger.log('load', {
 			logsLength: this.logs.length,
@@ -48,6 +67,9 @@ class LogController {
 		this.isLoad = true;
 	};
 
+	/**
+	 * Fires, when ext has started
+	 */
 	addListeners() {
 		logger.log();
 
@@ -78,6 +100,9 @@ class LogController {
 		this.sidebar.isReady = true;
 	}
 
+	/**
+	 * Fires, when ext has stopped
+	 */
 	removeListeners() {
 		logger.log();
 
@@ -91,4 +116,4 @@ class LogController {
 	}
 }
 
-export default LogController;
+export default new LogController();

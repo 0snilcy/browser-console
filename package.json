@@ -43,22 +43,10 @@
 				"category": "BrowserConsole"
 			},
 			{
-				"command": "browser-console.showEnumerable",
-				"title": "Show enumerable values",
-				"category": "BrowserConsole",
-				"icon": {
-					"dark": "assets/img/link-active.svg",
-					"light": "assets/img/link-active-light.svg"
-				}
-			},
-			{
-				"command": "browser-console.hideEnumerable",
+				"command": "browser-console.toggleEnumerable",
 				"title": "Hide enumerable values",
 				"category": "BrowserConsole",
-				"icon": {
-					"dark": "assets/img/link.svg",
-					"light": "assets/img/link-light.svg"
-				}
+				"icon": "$(symbol-interface)"
 			},
 			{
 				"command": "browser-console.showLine",
@@ -70,6 +58,12 @@
 				"title": "Reload page",
 				"category": "BrowserConsole",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "browser-console.toggleViewMode",
+				"title": "Toggle View mode",
+				"category": "BrowserConsole",
+				"icon": "$(list-tree)"
 			}
 		],
 		"configuration": {
@@ -97,6 +91,11 @@
 					"description": "Toggle visability of enumerable values",
 					"type": "boolean",
 					"default": true
+				},
+				"browserConsole.treeViewMode": {
+					"description": "Use Tree View mode",
+					"type": "boolean",
+					"default": true
 				}
 			}
 		},
@@ -104,14 +103,6 @@
 			"commandPalette": [
 				{
 					"command": "browser-console.commands",
-					"when": "false"
-				},
-				{
-					"command": "browser-console.showEnumerable",
-					"when": "false"
-				},
-				{
-					"command": "browser-console.hideEnumerable",
 					"when": "false"
 				},
 				{
@@ -126,14 +117,14 @@
 					"when": "view == browser-console-view && browser-console.browserIsStarting"
 				},
 				{
-					"command": "browser-console.showEnumerable",
+					"command": "browser-console.toggleEnumerable",
 					"group": "navigation",
-					"when": "!browser-console.showEnumerable && view == browser-console-view && browser-console.browserIsStarting"
+					"when": "view == browser-console-view && browser-console.browserIsStarting"
 				},
 				{
-					"command": "browser-console.hideEnumerable",
+					"command": "browser-console.toggleViewMode",
 					"group": "navigation",
-					"when": "browser-console.showEnumerable && view == browser-console-view && browser-console.browserIsStarting"
+					"when": "view == browser-console-view && browser-console.browserIsStarting"
 				}
 			],
 			"view/item/context": [

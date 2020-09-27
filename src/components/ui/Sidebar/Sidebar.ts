@@ -34,6 +34,11 @@ class Sidebar
 	private sortedLogs: IPathLog = {};
 	private isLoad = false;
 	private argsIdCache: IIdsCache = {};
+	private logs: Log[] = [];
+
+	/**
+	 * Sidebar ready to render
+	 */
 	isReady = false;
 
 	constructor() {
@@ -65,23 +70,7 @@ class Sidebar
 				if (parentElement)
 					if (Array.isArray(value)) {
 						// logs
-						return Promise.resolve(
-							value
-								.map((log: Log, id) => {
-									const first = log.args[0];
-									const preview = log.getPreview(first);
-									const { line, column, source } = log.originalPosition;
-									const argId = this.getArgId(`${source}:${line}:${column}`, id);
-
-									return log.args.length > 1
-										? new LogTreeItem(argId, log)
-										: new ArgTreeItem(argId, log, preview);
-								})
-								.sort(
-									({ log: logA }, { log: logB }) =>
-										logA.originalPosition.line - logB.originalPosition.line
-								)
-						);
+						return Promise.resolve(this.getTreeItemsFromArray(value));
 					}
 
 				// include dirs
@@ -152,7 +141,11 @@ class Sidebar
 			});
 
 			if (this.isLoad) {
-				return Promise.resolve(this.pathItems);
+				return Promise.resolve(
+					settings.editor.treeViewMode
+						? this.pathItems
+						: this.getTreeItemsFromArray(this.logs)
+				);
 			}
 
 			return new Promise((resolve) => {
@@ -160,12 +153,41 @@ class Sidebar
 				this.once('load', (logs) => {
 					logger.log('once.load.ready', logs.length);
 					this.isLoad = true;
+					this.logs = logs;
 					this.sortedLogs = {};
 					logs.forEach(this.reduceLogByPath);
-					resolve(this.pathItems);
+
+					resolve(
+						settings.editor.treeViewMode
+							? this.pathItems
+							: this.getTreeItemsFromArray(this.logs)
+					);
 				});
 			});
 		}
+	}
+
+	private getTreeItemsFromArray(logs: Log[]) {
+		logger.log({
+			logsLength: logs.length,
+		});
+
+		return logs
+			.map((log: Log, id) => {
+				const first = log.args[0];
+				const preview = log.getPreview(first);
+				const { line, column, source } = log.originalPosition;
+				const argId = this.getArgId(`${source}:${line}:${column}`, id);
+
+				return log.args.length > 1
+					? new LogTreeItem(argId, log)
+					: new ArgTreeItem(argId, log, preview);
+			})
+			.sort(({ log: logA }, { log: logB }) => {
+				return settings.editor.treeViewMode
+					? logA.originalPosition.line - logB.originalPosition.line
+					: 0;
+			});
 	}
 
 	private getArgId(key: string, id?: number) {
@@ -196,16 +218,7 @@ class Sidebar
 			.sort((a, b) => (a.id > b.id ? 1 : -1));
 	}
 
-	add = (logs: Log[]) => {
-		logger.log();
-		this.sortedLogs = {};
-		logs.forEach(this.reduceLogByPath);
-		this.isLoad = true;
-		this.refresh();
-		// this.reduceLogByPath(log);
-	};
-
-	reduceLogByPath = (log: Log): IPathLog => {
+	private reduceLogByPath = (log: Log): IPathLog => {
 		const pathArr = log.originalPosition.source.split('/').filter((el) => el);
 
 		return pathArr.reduce((obj, path, id, arr) => {
@@ -232,30 +245,45 @@ class Sidebar
 		}, this.sortedLogs);
 	};
 
-	// запускаем загрузчик
+	private rerender() {
+		this.sortedLogs = {};
+		this.argsIdCache = {};
+		this.refresh();
+	}
+
+	private refresh = () => {
+		logger.log();
+		this._onDidChangeTreeData.fire(undefined);
+	};
+
+	/**
+	 * Render only received logs in the Sidebar
+	 */
+	add = (logs: Log[]) => {
+		logger.log();
+		this.sortedLogs = {};
+		logs.forEach(this.reduceLogByPath);
+		this.logs = logs;
+		this.isLoad = true;
+		this.refresh();
+	};
+
+	/**
+	 * Runs the progress bar and waits for the event to load
+	 */
 	update = () => {
 		logger.log();
 		this.isLoad = false;
 		this.rerender();
 	};
 
-	rerender() {
-		logger.log();
-		this.sortedLogs = {};
-		this.argsIdCache = {};
-		this.refresh();
-	}
-
+	/**
+	 * Render empty sidebar
+	 */
 	clear = () => {
 		logger.log();
 		this.isLoad = true;
 		this.rerender();
-		// this.isLoad = false;
-	};
-
-	refresh = () => {
-		logger.log();
-		this._onDidChangeTreeData.fire(undefined);
 	};
 }
 

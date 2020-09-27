@@ -1,6 +1,6 @@
 import vscode, { workspace, window } from 'vscode';
 import Browser from './Browser';
-import LogController from './LogContrller';
+import logController from './LogContrller';
 import config from '../config';
 import logger from './Logger';
 import { IPosition } from './Log';
@@ -32,7 +32,7 @@ interface IExtensionEvents {
 class Extension extends Emitter<IExtensionEvents> {
 	private browser: Browser | null;
 	private port: number | string;
-	private logController = new LogController();
+	private logController = logController;
 
 	private setContext(key: string, value: any) {
 		vscode.commands.executeCommand('setContext', `browser-console.${key}`, value);
