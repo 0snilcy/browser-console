@@ -1,6 +1,5 @@
 import puppeteer from 'puppeteer-core';
 import { Protocol } from 'devtools-protocol';
-import { EventEmitter } from 'events';
 import os from 'os';
 
 import SourceMaps from './SourceMaps';
@@ -17,7 +16,7 @@ export interface IFileLoaderResponse {
 
 export interface IBrowserEvent {
 	log: Log;
-	update: undefined;
+	reload: undefined;
 	load: undefined;
 }
 
@@ -45,12 +44,7 @@ class Browser extends Emitter<IBrowserEvent> {
 
 		await this.page.setRequestInterception(true);
 		this.page.on('request', this.onScriptRequest);
-
-		// this.page.on('close', () => console.log('close'));
-		// this.page.on('domcontentloaded', () => console.log('domcontentloaded'));
 		this.page.on('load', () => this.emit('load'));
-
-		// this.page.on('console', console.log);
 
 		this.CDPclient = await this.page.target().createCDPSession();
 		await this.CDPclient.send('Runtime.enable');
@@ -92,7 +86,7 @@ class Browser extends Emitter<IBrowserEvent> {
 					}
 
 					this.serverHash = parsedPayload.data;
-					this.emit('update');
+					this.emit('reload');
 				}
 			});
 		}
@@ -164,6 +158,10 @@ class Browser extends Emitter<IBrowserEvent> {
 
 		await page.close();
 		return data;
+	}
+
+	reload() {
+		this.page.reload();
 	}
 }
 

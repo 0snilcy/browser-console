@@ -17,7 +17,7 @@ class PropTreeItem extends vscode.TreeItem {
 			: vscode.TreeItemCollapsibleState.None;
 
 		this.description = this.preview.title;
-		this.tooltip = settings.editor.debug ? new.target.name + this.id : this.tooltip;
+		this.tooltip = settings.editor.debug ? `${new.target.name} > ${this.id}` : this.tooltip;
 	}
 }
 

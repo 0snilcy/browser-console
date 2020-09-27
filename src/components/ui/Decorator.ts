@@ -9,7 +9,6 @@ export interface IDecoratorContainer {
 
 class Decorator {
 	private decorators: IDecoratorContainer = {};
-	private settings = settings.editor;
 
 	private getDecorator(contentText: string) {
 		return window.createTextEditorDecorationType({
@@ -17,9 +16,9 @@ class Decorator {
 			after: {
 				margin: '0 0 0 1rem',
 				contentText,
-				color: this.settings.debug ? 'red' : this.settings.textColor,
+				color: settings.editor.debug ? 'red' : settings.editor.textColor,
 			},
-			border: this.settings.debug ? '1px solid red' : 'none',
+			border: settings.editor.debug ? '1px solid red' : 'none',
 		});
 	}
 
@@ -44,7 +43,7 @@ class Decorator {
 		this.decorators = {};
 	}
 
-	onChange(logs: Log[]) {
+	add(logs: Log[]) {
 		const activeEditor = window.activeTextEditor;
 
 		if (!activeEditor) {

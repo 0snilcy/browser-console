@@ -104,8 +104,6 @@ export default class Log {
 			.map((propertyDescriptor) => {
 				const { value, name } = propertyDescriptor;
 
-				console.log(propertyDescriptor);
-
 				return {
 					preview: this.getPreview(value as Protocol.Runtime.RemoteObject),
 					name,
@@ -131,7 +129,6 @@ export default class Log {
 				])
 				.flat(2);
 
-			console.log(props);
 			return props;
 		}
 	}
@@ -248,4 +245,10 @@ export default class Log {
 			objectId: remoteObject.objectId,
 		} as IPreview;
 	};
+
+	isEqual(log: Log) {
+		return (Object.keys(this.originalPosition) as (keyof IPosition)[]).every(
+			(key) => this.originalPosition[key] === log.originalPosition[key]
+		);
+	}
 }

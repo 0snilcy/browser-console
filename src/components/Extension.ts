@@ -40,16 +40,16 @@ class Extension extends Emitter<IExtensionEvents> {
 
 	init() {
 		this.on('start', () => {
+			logger.log('start');
 			this.setContext('browserIsStarting', BrowserState.START);
 			this.setContext('showEnumerable', settings.editor.showEnumerable);
 			// this.showInfo(`Virtual console has been connected to http://localhost:${this.port}!`);
-
 			this.logController.addListeners();
 		});
 
 		this.on('stop', () => {
+			logger.log('stop');
 			this.setContext('browserIsStarting', BrowserState.STOP);
-
 			this.logController.removeListeners();
 		});
 
@@ -131,9 +131,9 @@ class Extension extends Emitter<IExtensionEvents> {
 		this.port = port;
 		try {
 			this.browser = new Browser();
-			this.browser.on('load', this.logController.onLoad);
-			this.browser.on('update', this.logController.onUpdate);
-			this.browser.on('log', this.logController.onLog);
+			this.browser.on('load', this.logController.load);
+			this.browser.on('reload', this.logController.update);
+			this.browser.on('log', this.logController.log);
 			await this.browser.init(port);
 
 			this.emit('start');
@@ -189,7 +189,6 @@ class Extension extends Emitter<IExtensionEvents> {
 	};
 
 	restartExtension = async () => {
-		// await this.stopExtensin();
 		await this.startExtension();
 	};
 
@@ -227,6 +226,11 @@ class Extension extends Emitter<IExtensionEvents> {
 				selection: new vscode.Range(codePosition, codePosition),
 			});
 		}
+	};
+
+	reload = () => {
+		this.browser?.reload();
+		this.logController.update();
 	};
 }
 

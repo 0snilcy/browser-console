@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import logger from './components/Logger';
 
 export class Emitter<T> {
 	private readonly emitter = new EventEmitter();
@@ -20,7 +21,7 @@ export class Emitter<T> {
 		const message = `${this.constructor.name}.emit( "${event}", ${arg} )`;
 
 		if (this.logger) {
-			console.log(message);
+			logger.log(message);
 		}
 
 		this.emitter.emit(event as string, arg);

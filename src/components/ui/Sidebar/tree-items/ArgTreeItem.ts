@@ -20,8 +20,7 @@ class ArgTreeItem extends vscode.TreeItem {
 			__dirname,
 			`../../../../../assets/img/log-icons/${log.type}.svg`
 		);
-
-		this.tooltip = (settings.editor.debug ? new.target.name : '') + this.id;
+		this.tooltip = (settings.editor.debug ? `${new.target.name} > ` : '') + this.id;
 	}
 }
 

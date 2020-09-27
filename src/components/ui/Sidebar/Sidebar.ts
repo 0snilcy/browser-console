@@ -5,41 +5,59 @@ import ArgTreeItem from './tree-items/ArgTreeItem';
 import LogTreeItem from './tree-items/LogTreeItem';
 import PathTreeItem from './tree-items/PathTreeItem';
 import PropTreeItem from './tree-items/PropTreeItem';
+
 import settings from '../../Settings';
 import { Emitter } from '../../../interfaces';
-// import logger from '../Logger';
+import logger from '../../Logger';
+
+type MaybeLog = vscode.TreeItem | undefined;
 
 interface IPathLog {
 	[key: string]: IPathLog | Log[];
 }
 
-type MaybeLog = vscode.TreeItem | undefined;
-
-interface ISidebarEvents {
+interface ISiebarEvents {
 	load: Log[];
 }
 
+interface IIdsCache {
+	[key: string]: number;
+}
+
 class Sidebar
-	extends Emitter<ISidebarEvents>
+	extends Emitter<ISiebarEvents>
 	implements vscode.TreeDataProvider<vscode.TreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<MaybeLog> = new vscode.EventEmitter<
 		MaybeLog
 	>();
 	readonly onDidChangeTreeData: vscode.Event<MaybeLog> = this._onDidChangeTreeData.event;
 	private sortedLogs: IPathLog = {};
-	private isLoaded = false;
+	private isLoad = false;
+	private argsIdCache: IIdsCache = {};
+	isReady = false;
 
 	constructor() {
 		super();
 		settings.on('update', this.refresh);
 	}
 
+	getParent(element: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem> {
+		// logger.log( element);
+		return undefined;
+	}
+
 	getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+		// logger.log( element);
 		return element;
 	}
 
-	// TODO vscode need Promise, but TreeDataProvider Thenable (linter error)
-	async getChildren(parentElement: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
+	async getChildren(parentElement: vscode.TreeItem): Promise<vscode.TreeItem[]> {
+		if (!this.isReady) return Promise.resolve([]);
+
+		logger.log({
+			parentTooltip: parentElement?.tooltip,
+		});
+
 		if (parentElement) {
 			if (parentElement instanceof PathTreeItem) {
 				const { value } = parentElement;
@@ -49,14 +67,15 @@ class Sidebar
 						// logs
 						return Promise.resolve(
 							value
-								.map((log: Log) => {
+								.map((log: Log, id) => {
 									const first = log.args[0];
 									const preview = log.getPreview(first);
-
 									const { line, column, source } = log.originalPosition;
+									const argId = this.getArgId(`${source}:${line}:${column}`, id);
+
 									return log.args.length > 1
-										? new LogTreeItem(log)
-										: new ArgTreeItem(`${source}:${line}:${column}[0]`, log, preview);
+										? new LogTreeItem(argId, log)
+										: new ArgTreeItem(argId, log, preview);
 								})
 								.sort(
 									({ log: logA }, { log: logB }) =>
@@ -127,32 +146,63 @@ class Sidebar
 			return Promise.resolve([]);
 		} else {
 			// root dirs
-			if (this.isLoaded) {
-				return Promise.resolve(
-					Object.keys(this.sortedLogs).map(
-						(path) => new PathTreeItem(path, path, this.sortedLogs[path])
-					)
-				);
+			logger.log('rootDirs', {
+				logs: this.sortedLogs,
+				isLoad: this.isLoad,
+			});
+
+			if (this.isLoad) {
+				return Promise.resolve(this.pathItems);
 			}
 
 			return new Promise((resolve) => {
+				logger.log('once.load.add');
 				this.once('load', (logs) => {
-					this.isLoaded = true;
+					logger.log('once.load.ready', logs.length);
+					this.isLoad = true;
 					this.sortedLogs = {};
 					logs.forEach(this.reduceLogByPath);
-					resolve(
-						Object.keys(this.sortedLogs).map(
-							(path) => new PathTreeItem(path, path, this.sortedLogs[path])
-						)
-					);
+					resolve(this.pathItems);
 				});
 			});
 		}
 	}
 
-	add = (log: Log) => {
-		this.reduceLogByPath(log);
+	private getArgId(key: string, id?: number) {
+		logger.log({
+			key,
+			id,
+			counter: this.argsIdCache[key],
+		});
+
+		const exist = this.argsIdCache[key];
+
+		if (typeof exist === 'number') {
+			if (typeof id === 'number' && exist >= id) {
+				return `${key}[${id}]`;
+			}
+
+			++this.argsIdCache[key];
+		} else {
+			this.argsIdCache[key] = 0;
+		}
+
+		return `${key}[${this.argsIdCache[key]}]`;
+	}
+
+	private get pathItems() {
+		return Object.keys(this.sortedLogs)
+			.map((path) => new PathTreeItem(path, path, this.sortedLogs[path]))
+			.sort((a, b) => (a.id > b.id ? 1 : -1));
+	}
+
+	add = (logs: Log[]) => {
+		logger.log();
+		this.sortedLogs = {};
+		logs.forEach(this.reduceLogByPath);
+		this.isLoad = true;
 		this.refresh();
+		// this.reduceLogByPath(log);
 	};
 
 	reduceLogByPath = (log: Log): IPathLog => {
@@ -182,14 +232,31 @@ class Sidebar
 		}, this.sortedLogs);
 	};
 
-	reset = () => {
-		this.isLoaded = false;
+	// запускаем загрузчик
+	update = () => {
+		logger.log();
+		this.isLoad = false;
+		this.rerender();
+	};
+
+	rerender() {
+		logger.log();
+		this.sortedLogs = {};
+		this.argsIdCache = {};
 		this.refresh();
+	}
+
+	clear = () => {
+		logger.log();
+		this.isLoad = true;
+		this.rerender();
+		// this.isLoad = false;
 	};
 
 	refresh = () => {
+		logger.log();
 		this._onDidChangeTreeData.fire(undefined);
 	};
 }
 
-export default Sidebar;
+export default new Sidebar();

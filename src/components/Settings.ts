@@ -20,16 +20,14 @@ class Settigns extends Emitter<ISettingsEvents> {
 	constructor() {
 		super();
 
-		const settings = workspace.getConfiguration(config.appName);
-
-		this.update({
-			port: settings.get('port'),
-			debug: settings.get('debug'),
-			pathToChrome: settings.get('pathToChrome'),
-			textColor: settings.get('textColor'),
-			showEnumerable: settings.get('showEnumerable'),
-		});
+		workspace.onDidChangeConfiguration(this.updateFromConfig);
+		this.updateFromConfig();
 	}
+
+	updateFromConfig = () => {
+		const settings = workspace.getConfiguration(config.appName);
+		this.update(settings as IEditorSettings);
+	};
 
 	get editor() {
 		return this._editor;

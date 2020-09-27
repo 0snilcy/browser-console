@@ -8,7 +8,7 @@ class PathTreeItem extends vscode.TreeItem {
 		public readonly value?: any
 	) {
 		super(label, vscode.TreeItemCollapsibleState.Expanded);
-		this.tooltip = (settings.editor.debug ? new.target.name : '') + this.id;
+		this.tooltip = (settings.editor.debug ? `${new.target.name} > ` : '') + this.id;
 	}
 }
 

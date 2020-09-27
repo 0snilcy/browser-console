@@ -28,6 +28,11 @@
 				"category": "BrowserConsole"
 			},
 			{
+				"command": "browser-console.start",
+				"title": "Start",
+				"category": "BrowserConsole"
+			},
+			{
 				"command": "browser-console.stop",
 				"title": "Stop",
 				"category": "BrowserConsole"
@@ -35,11 +40,6 @@
 			{
 				"command": "browser-console.restart",
 				"title": "Restart",
-				"category": "BrowserConsole"
-			},
-			{
-				"command": "browser-console.start",
-				"title": "Start",
 				"category": "BrowserConsole"
 			},
 			{
@@ -64,6 +64,12 @@
 				"command": "browser-console.showLine",
 				"title": "Go to line",
 				"category": "BrowserConsole"
+			},
+			{
+				"command": "browser-console.reload",
+				"title": "Reload page",
+				"category": "BrowserConsole",
+				"icon": "$(refresh)"
 			}
 		],
 		"configuration": {
@@ -85,7 +91,7 @@
 				"browserConsole.textColor": {
 					"description": "Color of log's decorator\n https://code.visualstudio.com/api/references/theme-color#color-formats",
 					"type": "string",
-					"default": "#0006"
+					"default": "#777"
 				},
 				"browserConsole.showEnumerable": {
 					"description": "Toggle visability of enumerable values",
@@ -115,14 +121,19 @@
 			],
 			"view/title": [
 				{
+					"command": "browser-console.reload",
+					"group": "navigation",
+					"when": "view == browser-console-view && browser-console.browserIsStarting"
+				},
+				{
 					"command": "browser-console.showEnumerable",
 					"group": "navigation",
-					"when": "!browser-console.showEnumerable && view == browser-console-view"
+					"when": "!browser-console.showEnumerable && view == browser-console-view && browser-console.browserIsStarting"
 				},
 				{
 					"command": "browser-console.hideEnumerable",
 					"group": "navigation",
-					"when": "browser-console.showEnumerable && view == browser-console-view"
+					"when": "browser-console.showEnumerable && view == browser-console-view && browser-console.browserIsStarting"
 				}
 			],
 			"view/item/context": [
@@ -138,8 +149,7 @@
 					"id": "browser-console-view",
 					"name": "Browser Console",
 					"icon": "assets/img/console.svg",
-					"contextualTitle": "Browser Console",
-					"when": "browser-console.browserIsStarting || config.browserConsole.debug"
+					"contextualTitle": "Browser Console"
 				}
 			]
 		},
@@ -167,8 +177,9 @@
 	},
 	"devDependencies": {
 		"@types/node": "^12.12.0",
-		"@types/vscode": "^1.32.0",
+		"@types/pino": "^6.3.1",
 		"@types/puppeteer-core": "^2.0.0",
+		"@types/vscode": "^1.32.0",
 		"@typescript-eslint/eslint-plugin": "^3.0.2",
 		"@typescript-eslint/parser": "^3.0.2",
 		"eslint": "^7.1.0",
@@ -176,9 +187,10 @@
 		"typescript": "4.0.3"
 	},
 	"dependencies": {
+		"devtools-protocol": "^0.0.802093",
+		"pino": "^6.6.1",
 		"puppeteer-core": "^5.2.1",
-		"source-map": "^0.8.0-beta.0",
-		"devtools-protocol": "^0.0.802093"
+		"source-map": "^0.8.0-beta.0"
 	},
 	"nodemonConfig": {
 		"env": {

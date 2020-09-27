@@ -1,66 +1,93 @@
 import vscode, { workspace, window } from 'vscode';
 
 import Log from './Log';
-import Sidebar from './ui/Sidebar/';
 import Decorator from './ui/Decorator';
+import sidebar from './ui/sidebar/Sidebar';
+import logger from './Logger';
 
 class LogController {
 	private logs: Log[] = [];
-	private sidebar: Sidebar;
-	private decorator: Decorator;
+	private decorator = new Decorator();
 	private listeners: vscode.Disposable[] = [];
 	private isLoad = false;
+	private sidebar = sidebar;
 
-	constructor() {
-		this.sidebar = new Sidebar();
-		this.decorator = new Decorator();
-	}
-
-	onLog = (log: Log) => {
+	log = (log: Log) => {
 		this.logs.push(log);
+		logger.log('log', {
+			logsLength: this.logs.length,
+			isLoad: this.isLoad,
+			logTitle: log.previewTitle,
+		});
 
 		if (this.isLoad) {
-			this.sidebar.add(log);
-			this.decorator.onChange([log]);
+			this.sidebar.add(this.logs);
+			this.decorator.add([log]);
 		}
 	};
-
-	onUpdate = () => {
+	update = () => {
 		this.logs = [];
-		this.sidebar.reset();
-		this.decorator.reset();
+
+		logger.log('update', {
+			isLoad: this.isLoad,
+			logsLength: this.logs.length,
+		});
+
 		this.isLoad = false;
+		this.sidebar.update();
+		this.decorator.reset();
 	};
 
-	onLoad = () => {
+	load = () => {
+		logger.log('load', {
+			logsLength: this.logs.length,
+		});
+
 		this.sidebar.emit('load', this.logs);
-		this.decorator.onChange(this.logs);
+		this.decorator.add(this.logs);
 		this.isLoad = true;
 	};
 
 	addListeners() {
-		this.listeners.push(
-			vscode.window.registerTreeDataProvider('browser-console-view', this.sidebar)
-		);
+		logger.log();
 
 		workspace.onDidChangeTextDocument(
-			() => this.decorator.onChange(this.logs),
+			() => {
+				if (this.isLoad) {
+					this.decorator.add(this.logs);
+				}
+			},
 			null,
 			this.listeners
 		);
 
 		window.onDidChangeActiveTextEditor(
-			() => this.decorator.onChange(this.logs),
+			() => this.decorator.add(this.logs),
 			null,
 			this.listeners
 		);
 
-		workspace.onWillSaveTextDocument(this.onUpdate, null, this.listeners);
+		workspace.onWillSaveTextDocument(
+			() => {
+				this.isLoad = false;
+			},
+			null,
+			this.listeners
+		);
+
+		this.sidebar.isReady = true;
 	}
 
 	removeListeners() {
-		this.onUpdate();
+		logger.log();
+
+		this.logs = [];
+		this.isLoad = false;
+		this.sidebar.clear();
+		this.decorator.reset();
+
 		this.listeners.forEach((listener) => listener.dispose());
+		this.sidebar.isReady = false;
 	}
 }
 
