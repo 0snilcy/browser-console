@@ -93,6 +93,10 @@ class Extension extends Emitter<IExtensionEvents> {
 
   private showError(err: string | Error) {
     // this.stopExtensin();
+
+    this.emit('stop');
+    this.emit('progressEnd');
+
     console.error(err);
     logger.log(err);
 
@@ -111,7 +115,7 @@ class Extension extends Emitter<IExtensionEvents> {
       );
 
       for await (const config of webpackConfig) {
-        const { devServer } = await import(config.path);
+        const { devServer } = await import(config.fsPath);
         if (!devServer) {
           return;
         }
@@ -140,9 +144,6 @@ class Extension extends Emitter<IExtensionEvents> {
         port: port as number,
         stopPort: port as number,
       });
-
-      this.emit('stop');
-      this.emit('progressEnd');
       return this.showError('Connection refused!');
     } catch (err) {
       try {
@@ -174,6 +175,7 @@ class Extension extends Emitter<IExtensionEvents> {
     }
 
     const webpackPort = await this.getWebpackConfig();
+
     if (webpackPort) {
       return this.initBrowser(webpackPort);
     }
