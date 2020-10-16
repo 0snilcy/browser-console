@@ -13,6 +13,9 @@ class LogController {
   private isLoad = false;
   private sidebar = sidebar;
 
+  private readonly loadMaxCounter = settings.editor.routes?.length;
+  private loadCounter = 0;
+
   /**
    * Adds log to array and UI if the page has been loaded
    */
@@ -52,6 +55,7 @@ class LogController {
     }
 
     this.decorator.reset();
+    this.loadCounter = 0;
   };
 
   /**
@@ -61,10 +65,13 @@ class LogController {
     logger.log('load', {
       logsLength: this.logs.length,
     });
+    ++this.loadCounter;
 
-    this.sidebar.emit('load', this.logs);
-    this.decorator.add(this.logs);
-    this.isLoad = true;
+    if (this.loadCounter === this.loadMaxCounter) {
+      this.sidebar.emit('load', this.logs);
+      this.decorator.add(this.logs);
+      this.isLoad = true;
+    }
   };
 
   /**

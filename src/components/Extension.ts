@@ -75,7 +75,7 @@ class Extension extends Emitter<IExtensionEvents> {
     });
 
     if (settings.editor.debug) {
-      this.startExtension();
+      // this.startExtension();
     }
   }
 
@@ -147,6 +147,7 @@ class Extension extends Emitter<IExtensionEvents> {
       return this.showError('Connection refused!');
     } catch (err) {
       try {
+        this.emit('progressStart');
         this.browser = new Browser();
         this.browser.on('load', this.logController.load);
         this.browser.on('reload', this.logController.update);
@@ -166,7 +167,6 @@ class Extension extends Emitter<IExtensionEvents> {
       return this.showError('Workspase is empty!');
     }
 
-    this.emit('progressStart');
     await this.stopExtensin();
 
     const { port: configPort } = settings.editor;

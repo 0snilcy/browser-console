@@ -6,169 +6,196 @@ import SourceMaps from './SourceMaps';
 import config from '../config';
 import Log from './Log';
 import { Emitter } from '../interfaces';
+import settings from './Settings';
 
 export interface IFileLoaderResponse {
-	status: number;
-	statusText: string;
-	ok: boolean;
-	content?: string;
+  status: number;
+  statusText: string;
+  ok: boolean;
+  content?: string;
 }
 
 export interface IBrowserEvent {
-	log: Log;
-	reload: undefined;
-	load: undefined;
+  log: Log;
+  reload: undefined;
+  load: string;
+}
+
+type Route = string;
+
+interface IPage {
+  page: puppeteer.Page;
+  cdp: puppeteer.CDPSession;
 }
 
 class Browser extends Emitter<IBrowserEvent> {
-	private browser: puppeteer.Browser;
-	private page: puppeteer.Page;
-	private CDPclient: puppeteer.CDPSession;
-	private serverHash: string;
-	private sourceMaps = SourceMaps;
+  private browser: puppeteer.Browser;
+  private pages: {
+    [key: string]: IPage;
+  } = {};
+  private serverHash: string;
+  private sourceMaps = SourceMaps;
+  private port: number | string;
 
-	private get defaultBrowserDir() {
-		const platform = os.platform();
-		return config.pathToChrome[platform];
-	}
+  private get defaultBrowserDir() {
+    const platform = os.platform();
+    return config.pathToChrome[platform];
+  }
 
-	async init(port: number | string, browserDir?: string) {
-		this.browser = await puppeteer.launch({
-			// headless: false,
-			// devtools: true,
-			args: config.browserArgs,
-			executablePath: browserDir || this.defaultBrowserDir,
-		});
+  async createPage(route: Route) {
+    const page = await this.browser.newPage();
 
-		this.page = await this.browser.newPage();
+    await page.setRequestInterception(true);
+    page.on('request', this.onScriptRequest);
+    page.on('load', () => this.emit('load', route));
 
-		await this.page.setRequestInterception(true);
-		this.page.on('request', this.onScriptRequest);
-		this.page.on('load', () => this.emit('load'));
+    const CDPclient = await page.target().createCDPSession();
+    await CDPclient.send('Runtime.enable');
+    await CDPclient.send('Network.enable');
+    CDPclient.on('Runtime.consoleAPICalled', (event) =>
+      this.onConsoleLog(route, event)
+    );
+    CDPclient.on('Network.webSocketFrameReceived', this.onWSReloadPage);
 
-		this.CDPclient = await this.page.target().createCDPSession();
-		await this.CDPclient.send('Runtime.enable');
-		await this.CDPclient.send('Network.enable');
-		this.CDPclient.on('Runtime.consoleAPICalled', this.onConsoleLog);
-		this.CDPclient.on('Network.webSocketFrameReceived', this.onWSReloadPage);
+    page.goto(`http://localhost:${this.port}${route}`);
+    this.pages[route] = {
+      page,
+      cdp: CDPclient,
+    };
+  }
 
-		this.page.goto(`http://localhost:${port}/`);
-	}
+  async init(port: number | string, browserDir?: string) {
+    this.port = port;
 
-	async close() {
-		if (this.browser) {
-			await this.browser.close();
-		}
-	}
+    this.browser = await puppeteer.launch({
+      // headless: false,
+      // devtools: true,
+      args: config.browserArgs,
+      executablePath: browserDir || this.defaultBrowserDir,
+    });
 
-	private onWSReloadPage = (event: Protocol.Network.WebSocketFrameReceivedEvent) => {
-		// https://github.com/sockjs/sockjs-client/blob/110788c1e6422972c89d7a65365cc5e46bb6f6ec/lib/main.js#L245
-		const message = event.response.payloadData;
-		if (!message) {
-			return;
-		}
+    settings.editor.routes?.forEach(this.createPage, this);
+  }
 
-		const type = message.slice(0, 1);
-		const data = message.slice(1);
+  async close() {
+    if (this.browser) {
+      await this.browser.close();
+    }
+  }
 
-		if (data && type === 'a') {
-			const payloadArr = JSON.parse(data);
-			payloadArr.forEach((payload: string) => {
-				const parsedPayload = JSON.parse(payload);
-				if (parsedPayload.type === 'hash') {
-					if (!this.serverHash) {
-						this.serverHash = parsedPayload.data;
-						return;
-					}
+  private onWSReloadPage = (
+    event: Protocol.Network.WebSocketFrameReceivedEvent
+  ) => {
+    // https://github.com/sockjs/sockjs-client/blob/110788c1e6422972c89d7a65365cc5e46bb6f6ec/lib/main.js#L245
+    const message = event.response.payloadData;
+    if (!message) {
+      return;
+    }
 
-					if (parsedPayload.data === this.serverHash) {
-						return;
-					}
+    const type = message.slice(0, 1);
+    const data = message.slice(1);
 
-					this.serverHash = parsedPayload.data;
-					this.emit('reload');
-				}
-			});
-		}
-	};
+    if (data && type === 'a') {
+      const payloadArr = JSON.parse(data);
+      payloadArr.forEach((payload: string) => {
+        const parsedPayload = JSON.parse(payload);
+        if (parsedPayload.type === 'hash') {
+          if (!this.serverHash) {
+            this.serverHash = parsedPayload.data;
+            return;
+          }
 
-	private onScriptRequest = async (request: puppeteer.Request) => {
-		const type = request.resourceType();
-		if (config.request.ignoreTypes.includes(type)) {
-			return request.abort();
-		}
+          if (parsedPayload.data === this.serverHash) {
+            return;
+          }
 
-		if (type === 'script') {
-			const url = request.url();
-			const response = await this.loadFile(`${url}.map`);
+          this.serverHash = parsedPayload.data;
+          this.emit('reload');
+        }
+      });
+    }
+  };
 
-			if (response && response.ok && response.content) {
-				await this.sourceMaps.create(url, response.content);
-			}
-		}
+  private onScriptRequest = async (request: puppeteer.Request) => {
+    const type = request.resourceType();
+    if (config.request.ignoreTypes.includes(type)) {
+      return request.abort();
+    }
 
-		return request.continue();
-	};
+    if (type === 'script') {
+      const url = request.url();
+      const response = await this.loadFile(`${url}.map`);
 
-	private getPropsByObjectId = async (
-		objectId: Protocol.Runtime.RemoteObjectId,
-		isProperty = true
-	): Promise<Protocol.Runtime.GetPropertiesResponse | undefined> => {
-		if (objectId) {
-			return (await this.CDPclient.send('Runtime.getProperties', {
-				objectId,
-				ownProperties: isProperty,
-				accessorPropertiesOnly: !isProperty,
-				generatePreview: true,
-			} as Protocol.Runtime.GetPropertiesRequest)) as Protocol.Runtime.GetPropertiesResponse;
-		}
+      if (response && response.ok && response.content) {
+        await this.sourceMaps.create(url, response.content);
+      }
+    }
 
-		console.error('objectId is missing');
-	};
+    return request.continue();
+  };
 
-	private onConsoleLog = async (event: Protocol.Runtime.ConsoleAPICalledEvent) => {
-		const log = new Log(event, this.getPropsByObjectId);
-		if (event.type !== 'info') {
-			// console.log(event.args);
-			// console.log(log.preview);
-			// if (!event.args) return;
-			// const resp = await this.getPropsByObjectId(event.args[0].objectId);
-			// console.log(resp?.result);
-			// console.log(log.getPreview(resp?.result[2].value));
-		}
+  private getPropsByObjectId = async (
+    route: Route,
+    objectId: Protocol.Runtime.RemoteObjectId,
+    isProperty = true
+  ): Promise<Protocol.Runtime.GetPropertiesResponse | undefined> => {
+    if (objectId) {
+      const client = this.pages[route].cdp;
+      return (await client.send('Runtime.getProperties', {
+        objectId,
+        ownProperties: isProperty,
+        accessorPropertiesOnly: !isProperty,
+        generatePreview: true,
+      } as Protocol.Runtime.GetPropertiesRequest)) as Protocol.Runtime.GetPropertiesResponse;
+    }
 
-		if (log.existOnClient) {
-			this.emit('log', log);
-		}
-	};
+    console.error('objectId is missing');
+  };
 
-	private async loadFile(url: string): Promise<IFileLoaderResponse | undefined> {
-		const page = await this.browser.newPage();
-		const response = await page.goto(url);
-		if (!response) {
-			return;
-		}
+  private onConsoleLog = async (
+    route: Route,
+    event: Protocol.Runtime.ConsoleAPICalledEvent
+  ) => {
+    const log = new Log(
+      route,
+      event,
+      this.getPropsByObjectId.bind(this, route)
+    );
 
-		const data: IFileLoaderResponse = {
-			status: response.status(),
-			statusText: response.statusText(),
-			ok: response.ok(),
-			content: await response.text(),
-		};
+    if (log.existOnClient) {
+      this.emit('log', log);
+    }
+  };
 
-		await page.close();
-		return data;
-	}
+  private async loadFile(
+    url: string
+  ): Promise<IFileLoaderResponse | undefined> {
+    const page = await this.browser.newPage();
+    const response = await page.goto(url);
+    if (!response) {
+      return;
+    }
 
-	reload() {
-		this.page.reload();
-	}
+    const data: IFileLoaderResponse = {
+      status: response.status(),
+      statusText: response.statusText(),
+      ok: response.ok(),
+      content: await response.text(),
+    };
+
+    await page.close();
+    return data;
+  }
+
+  reload() {
+    Object.keys(this.pages).forEach((key) => this.pages[key].page.reload());
+  }
 }
 
 const test = async () => {
-	console.clear();
-	const browser = new Browser();
-	await browser.init(8080);
+  console.clear();
+  const browser = new Browser();
+  await browser.init(8080);
 };
 
 // test();

@@ -11,6 +11,7 @@ const pathToChrome: {
 export default {
   appName: 'browserConsole',
   appNameU: 'BrowserConsole',
+  appNameShort: 'BConsole',
   languagesIdentifiers: [
     'javascript',
     'javascriptreact',
