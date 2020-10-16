@@ -180,6 +180,7 @@
 	"dependencies": {
 		"devtools-protocol": "^0.0.802093",
 		"pino": "^6.6.1",
+		"portfinder": "^1.0.28",
 		"puppeteer-core": "^5.2.1",
 		"source-map": "^0.8.0-beta.0"
 	},
