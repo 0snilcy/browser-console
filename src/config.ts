@@ -18,9 +18,6 @@ export default {
     'typescript',
     'typescriptreact',
   ],
-  request: {
-    ignoreTypes: ['image', 'font', 'stylesheet'],
-  },
   browserArgs: [
     // Disable sandboxing when not available
     '--no-sandbox',

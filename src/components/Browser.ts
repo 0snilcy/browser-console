@@ -68,10 +68,15 @@ class Browser extends Emitter<IBrowserEvent> {
     this.port = port;
 
     this.browser = await puppeteer.launch({
-      // headless: false,
-      // devtools: true,
       args: config.browserArgs,
       executablePath: browserDir || this.defaultBrowserDir,
+
+      ...(settings.editor.debug
+        ? {
+            headless: false,
+            devtools: true,
+          }
+        : {}),
     });
 
     settings.editor.routes?.forEach(this.createPage, this);
@@ -118,7 +123,10 @@ class Browser extends Emitter<IBrowserEvent> {
 
   private onScriptRequest = async (request: puppeteer.Request) => {
     const type = request.resourceType();
-    if (config.request.ignoreTypes.includes(type)) {
+    if (
+      settings.editor.ignoreRequestTypes &&
+      settings.editor.ignoreRequestTypes.includes(type)
+    ) {
       return request.abort();
     }
 

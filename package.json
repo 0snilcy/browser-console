@@ -69,6 +69,24 @@
     "configuration": {
       "title": "Browser Console",
       "properties": {
+        "browserConsole.excludeDirs": {
+          "description": "List of pattrens for excluding logs",
+          "type": "array",
+          "default": [
+            "(webpack)/",
+            "(webpack)-dev-server/",
+            "node_modules/"
+          ]
+        },
+        "browserConsole.ignoreRequestTypes": {
+          "description": "List of request types for skiping \nhttps://github.com/puppeteer/puppeteer/blob/main/docs/api.md#httprequestresourcetype",
+          "type": "array",
+          "default": [
+            "image",
+            "font",
+            "media"
+          ]
+        },
         "browserConsole.routes": {
           "description": "List of routs for load",
           "type": "array",
@@ -90,7 +108,7 @@
           "type": "string"
         },
         "browserConsole.textColor": {
-          "description": "Color of log's decorator\n https://code.visualstudio.com/api/references/theme-color#color-formats",
+          "description": "Color of log's decorator \nhttps://code.visualstudio.com/api/references/theme-color#color-formats",
           "type": "string",
           "default": "#777"
         },

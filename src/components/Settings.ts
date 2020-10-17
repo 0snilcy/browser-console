@@ -10,6 +10,8 @@ export interface IEditorSettings {
   showEnumerable?: boolean;
   treeViewMode?: boolean;
   routes?: string[];
+  excludeDirs?: string[];
+  ignoreRequestTypes?: string[];
 }
 
 interface ISettingsEvents {

@@ -20,12 +20,22 @@ class LogController {
    * Adds log to array and UI if the page has been loaded
    */
   log = (log: Log) => {
-    this.logs.push(log);
     logger.log('log', {
       logsLength: this.logs.length,
       isLoad: this.isLoad,
       logTitle: log.previewTitle,
     });
+
+    if (
+      settings.editor.excludeDirs &&
+      settings.editor.excludeDirs.some((path) =>
+        log.originalPosition.source.startsWith(`/${path}`)
+      )
+    ) {
+      return;
+    }
+
+    this.logs.push(log);
 
     if (settings.editor.treeViewMode && !this.isLoad) {
       return;

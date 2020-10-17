@@ -75,7 +75,7 @@ class Extension extends Emitter<IExtensionEvents> {
     });
 
     if (settings.editor.debug) {
-      // this.startExtension();
+      this.startExtension();
     }
   }
 
