@@ -6,7 +6,7 @@ import SourceMaps from './SourceMaps';
 import config from '../config';
 import Log from './Log';
 import { Emitter } from '../interfaces';
-import settings from './Settings';
+import settings, { IRoute } from './Settings';
 
 export interface IFileLoaderResponse {
   status: number;
@@ -20,8 +20,6 @@ export interface IBrowserEvent {
   reload: undefined;
   load: string;
 }
-
-type Route = string;
 
 interface IPage {
   page: puppeteer.Page;
@@ -42,12 +40,31 @@ class Browser extends Emitter<IBrowserEvent> {
     return config.pathToChrome[platform];
   }
 
-  async createPage(route: Route) {
+  async createPage({ route, events }: IRoute) {
     const page = await this.browser.newPage();
 
     await page.setRequestInterception(true);
     page.on('request', this.onScriptRequest);
-    page.on('load', () => this.emit('load', route));
+    page.on('load', () => {
+      this.emit('load', route);
+      if (events) {
+        events.forEach(async (event) => {
+          const [type, selector, timeout = 0] = event.split(' ');
+
+          const elsHandle = await page.$$(selector);
+          if (elsHandle.length) {
+            page.evaluate((...els) => {
+              els.forEach((el) => {
+                setTimeout(() => {
+                  const eventObj = new Event(type);
+                  el.dispatchEvent(eventObj);
+                }, +timeout);
+              });
+            }, ...elsHandle);
+          }
+        });
+      }
+    });
 
     const CDPclient = await page.target().createCDPSession();
     await CDPclient.send('Runtime.enable');

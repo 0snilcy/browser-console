@@ -91,7 +91,10 @@
           "description": "List of routs for load",
           "type": "array",
           "default": [
-            "/"
+            {
+              "route": "/",
+              "events": []
+            }
           ]
         },
         "browserConsole.port": {

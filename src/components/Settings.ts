@@ -2,6 +2,11 @@ import { workspace } from 'vscode';
 import config from '../config';
 import { Emitter } from '../interfaces';
 
+export interface IRoute {
+  route: string;
+  events?: string[];
+}
+
 export interface IEditorSettings {
   port?: number;
   debug?: boolean;
@@ -9,7 +14,7 @@ export interface IEditorSettings {
   textColor?: string;
   showEnumerable?: boolean;
   treeViewMode?: boolean;
-  routes?: string[];
+  routes?: IRoute[];
   excludeDirs?: string[];
   ignoreRequestTypes?: string[];
 }
