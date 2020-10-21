@@ -5,7 +5,7 @@ import extension from '../Extension';
 const Icon = {
   BROWSER: 'browser',
   PLAY: 'play',
-  ELLIPSIS: 'ellipsis',
+  ELLIPSIS: 'loading~spin',
 };
 
 class StatusBar {

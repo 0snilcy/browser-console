@@ -2,13 +2,13 @@
   "name": "browser-console",
   "description": "BrowserConsol extension",
   "version": "0.0.1",
-  "publisher": "vscode-samples",
+  "publisher": "JohnnyRocket",
   "license": "MIT",
   "engines": {
     "vscode": "^1.32.0"
   },
   "repository": {
-    "url": "git@github.com:avocato0/browser-console.git"
+    "url": "https://github.com/avocato0/browser-console"
   },
   "categories": [
     "Debuggers",
@@ -19,7 +19,7 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -189,10 +189,13 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "lint": "eslint . --ext .ts,.tsx",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "webpack --mode production",
+    "webpack": "webpack --mode development",
+    "webpack-dev": "webpack --mode development --watch",
+    "test-compile": "tsc -p ./"
   },
   "devDependencies": {
     "@types/node": "^12.12.0",
@@ -203,7 +206,10 @@
     "@typescript-eslint/parser": "^3.0.2",
     "eslint": "^7.1.0",
     "nodemon": "2.0.4",
-    "typescript": "4.0.3"
+    "ts-loader": "^8.0.6",
+    "typescript": "4.0.3",
+    "webpack": "^5.1.3",
+    "webpack-cli": "^4.1.0"
   },
   "dependencies": {
     "devtools-protocol": "^0.0.802093",
