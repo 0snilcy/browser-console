@@ -26,10 +26,13 @@ interface IGetPropsResponse {
   descriptors: IDescriptor;
 }
 
+type Event = Protocol.Runtime.ConsoleAPICalledEvent['type'] | 'evt';
+
 export default class Log {
   private sourceMaps = SourceMaps;
+  private CORE_URL = '__puppeteer_evaluation_script__';
 
-  type: Protocol.Runtime.ConsoleAPICalledEvent['type'];
+  type: Event;
   args: Protocol.Runtime.RemoteObject[];
   generatedPosition: IPosition;
   originalPosition: IPosition;
@@ -49,7 +52,7 @@ export default class Log {
       return;
     }
 
-    this.type = type;
+    this.type = stackTrace.callFrames[1].url === this.CORE_URL ? 'evt' : type;
     this.args = args;
 
     const callFrame = stackTrace.callFrames[0];
@@ -139,7 +142,11 @@ export default class Log {
           this.foramtProps(result),
           this.foramtInternalProps(internalProperties),
         ])
-        .flat(2);
+        .flat(2)
+        .filter(
+          (prop, id, arr) =>
+            !arr.some(({ name }, someId) => prop.name === name && id < someId)
+        );
 
       return props;
     }

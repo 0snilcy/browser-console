@@ -40,30 +40,42 @@ class Browser extends Emitter<IBrowserEvent> {
     return config.pathToChrome[platform];
   }
 
-  async createPage({ route, events }: IRoute) {
+  async createPage({ route }: IRoute) {
     const page = await this.browser.newPage();
 
     await page.setRequestInterception(true);
     page.on('request', this.onScriptRequest);
     page.on('load', () => {
       this.emit('load', route);
-      if (events) {
-        events.forEach(async (event) => {
-          const [type, selector, timeout = 0] = event.split(' ');
+      const routeSettings = settings.editor.routes?.find(
+        (settingRoute) => settingRoute.route === route
+      );
 
+      if (!routeSettings || !routeSettings.events?.length) return;
+
+      routeSettings.events.forEach(async (event) => {
+        const match = event.match(/^\s*(\w+)\s+'(.+)'\s*(\d*)\s*$/);
+
+        if (match) {
+          const [, type, selector, timeout = 0] = match;
           const elsHandle = await page.$$(selector);
           if (elsHandle.length) {
-            page.evaluate((...els) => {
-              els.forEach((el) => {
-                setTimeout(() => {
-                  const eventObj = new Event(type);
-                  el.dispatchEvent(eventObj);
-                }, +timeout);
-              });
-            }, ...elsHandle);
+            page.evaluate(
+              (type, timeout, ...els) => {
+                els.forEach((el) => {
+                  setTimeout(() => {
+                    const eventObj = new Event(type);
+                    el.dispatchEvent(eventObj);
+                  }, timeout);
+                });
+              },
+              type,
+              +timeout,
+              ...elsHandle
+            );
           }
-        });
-      }
+        }
+      });
     });
 
     const CDPclient = await page.target().createCDPSession();
@@ -160,7 +172,7 @@ class Browser extends Emitter<IBrowserEvent> {
   };
 
   private getPropsByObjectId = async (
-    route: Route,
+    route: string,
     objectId: Protocol.Runtime.RemoteObjectId,
     isProperty = true
   ): Promise<Protocol.Runtime.GetPropertiesResponse | undefined> => {
@@ -178,7 +190,7 @@ class Browser extends Emitter<IBrowserEvent> {
   };
 
   private onConsoleLog = async (
-    route: Route,
+    route: string,
     event: Protocol.Runtime.ConsoleAPICalledEvent
   ) => {
     const log = new Log(

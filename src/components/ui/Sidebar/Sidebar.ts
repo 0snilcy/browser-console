@@ -68,11 +68,10 @@ class Sidebar
       if (parentElement instanceof PathTreeItem) {
         const { value } = parentElement;
 
-        if (parentElement)
-          if (Array.isArray(value)) {
-            // logs
-            return Promise.resolve(this.getTreeItemsFromArray(value));
-          }
+        if (Array.isArray(value)) {
+          // logs
+          return Promise.resolve(this.getTreeItemsFromArray(value));
+        }
 
         // include dirs
         return Promise.resolve(
@@ -229,9 +228,33 @@ class Sidebar
     return `${key}[${this.argsIdCache[key]}]`;
   }
 
+  private copy = (obj: IPathLog) => {
+    const result: IPathLog = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (!Array.isArray(value)) {
+        const newObj = this.copy(value);
+        const newKeys = Object.keys(newObj);
+
+        if (newKeys.length === 1) {
+          const nextKey = newKeys[0];
+          result[`${key}/${nextKey}`] = newObj[nextKey];
+        } else {
+          result[key] = newObj;
+        }
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  };
+
   private get pathItems() {
-    return Object.keys(this.sortedLogs)
-      .map((path) => new PathTreeItem(path, path, this.sortedLogs[path]))
+    const renderedLogs = this.copy(this.sortedLogs);
+
+    return Object.keys(renderedLogs)
+      .map((path) => new PathTreeItem(path, path, renderedLogs[path]))
       .sort((a, b) => (a.id > b.id ? 1 : -1));
   }
 
