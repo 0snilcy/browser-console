@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "publisher": "JohnnyRocket",
   "license": "MIT",
-  "icon": "./img/icon.png",
+  "icon": "assets/icon.png",
   "engines": {
     "vscode": "^1.32.0"
   },
