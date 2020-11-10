@@ -36,7 +36,7 @@ const config = {
       patterns: [
         path.resolve(__dirname, './node_modules/source-map/lib/mappings.wasm'),
         {
-          from: path.resolve(__dirname, './assets/img'),
+          from: path.resolve(__dirname, './assets/'),
           to: './img/',
         },
       ],
